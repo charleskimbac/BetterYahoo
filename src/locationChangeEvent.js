@@ -19,4 +19,3 @@
         window.dispatchEvent(new Event("locationchange"));
     });
 })();
-console.log("RYM-locationChangeEvent loaded");

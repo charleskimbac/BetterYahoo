@@ -2,7 +2,7 @@ import { React } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './popup/App.jsx';
 import "bootstrap/dist/css/bootstrap.min.css";
-import { tabsSendMessage, tabsQuery, storageSyncGet } from "./FirefoxMV2WebAPIChromeNamespace.js";
+import { tabsSendMessage, tabsQuery, storageSyncGet } from "../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 let warning = ""; // to show with <App>. wrap warning in <></>

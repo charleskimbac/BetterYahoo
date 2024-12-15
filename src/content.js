@@ -13,9 +13,13 @@ async function main() {
     // mailboxULelement and mailboxLiElements are removed and replaced SO WE NEED TO TRACK ALL DOC CHANGES 
     // USING MUTATION OBSERVER TO MAKE SURE WE ARE USING LATEST ONE AND NOT THE ONE THAT WAS REPLACED!! YIPEEEEEEE
     // todo: on replaced, remove all elems in old observer and refs, and redo all logic
-    await new Promise((resolve) => { // wait to maybe ensure we get the last replacement (temp fix)
-        window.setTimeout(resolve, 300);
-    });
+
+
+    // await new Promise((resolve) => { // wait to maybe ensure we get the last replacement (temp fix)
+    //     window.setTimeout(resolve, 300);
+    // });
+
+
 
     const onNewUI = isOnNewUI();
     if (onNewUI) {
@@ -62,20 +66,20 @@ async function main() {
         setSortByUnread(); // on initial load
     }
 
-    function onLocationChange() {
-        // check if current page is a mailbox (eg not in a specific email or search). eg: https://mail.yahoo.com/d/folders/[a number] ... nothing after
-        const url = location.href;
-        const rootUrl = "https://mail.yahoo.com/d/folders/";
-        if (url.startsWith(rootUrl)) {
-            const after = url.substring(rootUrl.length);
-            if (after.includes("/")) { // mailbox page shouldnt have / after root
-                return;
-            }
-            setSortByUnread();
-        }
-    }
-
     setListeners();
+}
+
+function onLocationChange() {
+    // check if current page is a mailbox (eg not in a specific email or search). eg: https://mail.yahoo.com/d/folders/[a number] ... nothing after
+    const url = location.href;
+    const rootUrl = "https://mail.yahoo.com/d/folders/";
+    if (url.startsWith(rootUrl)) {
+        const after = url.substring(rootUrl.length);
+        if (after.includes("/")) { // mailbox page shouldnt have / after root
+            return;
+        }
+        setSortByUnread();
+    }
 }
 
 function isOnNewUI() {
@@ -101,9 +105,9 @@ function setListeners() {
             mailboxLiElements = Array.from(mailboxULelement.children); // update changes
             console.log("RYM-updated order:", mailboxLiElements);
         } else if (message.task === "sortByUnread") {
-            if (message.sortByUnread) {
+            if (message.sortByUnread) { // turned on
                 window.addEventListener("locationchange", onLocationChange);
-                setSortByUnread(); // on initial load
+                setSortByUnread(); // set now
             } else {
                 window.removeEventListener("locationchange", onLocationChange);
             }
@@ -121,7 +125,7 @@ function setListeners() {
 async function setSortByUnread() {
     // click unread button after sortby is clicked (observer to wait for button to open)
     // start observing before clicking sortby
-
+    console.log("RYM-setSortByUnread");
     const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
     let sortByButton = document.querySelector(sortByButtonQuery);
     if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email

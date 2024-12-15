@@ -3,7 +3,7 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-ki
 import { useState } from "react";
 import SortableItem from "./SortableItem.jsx";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { tabsSendMessage } from "../FirefoxMV2WebAPIChromeNamespace.js";
+import { tabsSendMessage } from "../../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
 export default function App( { initialAddresses, initialSortByUnread, tabIDs, warning } ) {
   const [addresses, setAddresses] = useState(initialAddresses);

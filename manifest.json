@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Reorder Yahoo Mailboxes",
-    "version": "0.0.1",
-    "description": "",
+    "version": "0.0.2",
+    "description": "Reorder your Yahoo Mailboxes and choose to always sort your mail by unread.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
     "content_scripts": [
