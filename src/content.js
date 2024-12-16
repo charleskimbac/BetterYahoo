@@ -2,59 +2,43 @@
 // chrome.storage.sync.remove("addresses");
 // chrome.storage.sync.remove("sortByUnread");
 
-let mailboxUlElements = document.querySelectorAll(".M_0.P_0.hd_n"); // class "M_0 P_0 hd_n"
-let mailboxULelement = Array.from(mailboxUlElements)[0]; // first ul elem of this class; this elem is replaced by a newer elem sometimes, need to get it again
-let mailboxLiElements = Array.from(mailboxULelement.children); // li elems (mailboxes)
-const addressToLiElement = {}; // address: li element
-
 main();
 async function main() {
+    const onNewUI = isOnNewUI();
+    if (onNewUI) {
+        window.alert("Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail by pressing the button at the top right of the page.");
+        return;
+    }
     // KNOWN BUG: WHEN EXT DOESNT WORK/LOAD THE SORT, SCROLL DOWN MAILBOX LIST. IT GETS DUPED!
     // mailboxULelement and mailboxLiElements are removed and replaced SO WE NEED TO TRACK ALL DOC CHANGES 
     // USING MUTATION OBSERVER TO MAKE SURE WE ARE USING LATEST ONE AND NOT THE ONE THAT WAS REPLACED!! YIPEEEEEEE
     // todo: on replaced, remove all elems in old observer and refs, and redo all logic
 
+    // let a "mailbox" be a given LI element under the UL element of class ".M_0.P_0.hd_n"
 
-    // await new Promise((resolve) => { // wait to maybe ensure we get the last replacement (temp fix)
-    //     window.setTimeout(resolve, 300);
-    // });
+    let mailboxesParentElement = document.querySelectorAll(".M_0.P_0.hd_n")[0]; // first of class "M_0 P_0 hd_n"
+    // print(mailboxesParentElement);
+    let mailboxElementsArr = Array.from(mailboxesParentElement.children);
 
+    const addressToMailboxElement = {}; // address: mailbox
 
-
-    const onNewUI = isOnNewUI();
-    if (onNewUI) {
-        return;
-    }
+    // fill addressToMailboxElement
+    mailboxElementsArr.forEach((mailbox) => {
+        const address = mailbox.children[0].getAttribute("data-test-account-email");
+        addressToMailboxElement[address] = mailbox;
+    });
+    // print(addressToMailboxElement);
 
     // load saved order
-    const storedAddresses = await chrome.storage.sync.get("addresses"); // obj
-    const addressOrder = storedAddresses && storedAddresses.addresses;
+    const storedObj = await chrome.storage.sync.get("addresses"); // obj
+    const addressOrderArr = storedObj && storedObj.addresses;
+    // print(storedObj);
+    print(addressOrderArr);
 
-    if (addressOrder) { // if has stored order
-        // console.log("RYM-ULelement:", mailboxULelement);
-        addressOrder.forEach((address) => {
-            while (!mailboxULelement.isConnected) { // got replaced, not in DOM
-                console.log("RYM-ULelement not connected:", mailboxULelement);
-                mailboxUlElements = document.querySelectorAll(".M_0.P_0.hd_n");
-                mailboxULelement = Array.from(mailboxUlElements)[0];
-            }
-            console.log("RYM-ULelement connected:", mailboxULelement, address);
-
-            const liElement = mailboxLiElements.find((li) => { // find li element corresp. with address
-                return li.children[0].getAttribute("data-test-account-email") === address;
-            });
-            console.log("RYM-liElement:", liElement);
-            addressToLiElement[address] = liElement;
-
-            mailboxULelement.appendChild(liElement); // start showing new order
-        });
-        mailboxLiElements = Array.from(mailboxULelement.children); // update changes
-        console.log("RYM-loaded order:", mailboxLiElements);
+    if (addressOrderArr) { // if has stored order
+        sortMailboxes();
     } else {
-        mailboxLiElements.forEach((li) => {
-            const address = li.children[0].getAttribute("data-test-account-email");
-            addressToLiElement[address] = li;
-        });
+        
     }
 
     // set sort by unread
@@ -69,6 +53,22 @@ async function main() {
     setListeners();
 }
 
+function sortMailboxes() {
+    // check if new mailboxes added, not accounted for
+    const numNewMailboxes = mailboxElementsArr.length - addressOrderArr.length;
+    print(numNewMailboxes);
+    if (numNewMailboxes > 0) {
+        
+    }
+
+    addressOrderArr.forEach((address) => {
+        const mailboxElement = addressToMailboxElement[address];
+        mailboxesParentElement.appendChild(mailboxElement);
+        print(mailboxElement);
+        print(address);
+    });
+}
+
 function onLocationChange() {
     // check if current page is a mailbox (eg not in a specific email or search). eg: https://mail.yahoo.com/d/folders/[a number] ... nothing after
     const url = location.href;
@@ -80,6 +80,11 @@ function onLocationChange() {
         }
         setSortByUnread();
     }
+}
+
+// new mailbox added since last sort, so the mailbox isn't stored rn
+function handleNewMailboxAdded() {
+
 }
 
 function isOnNewUI() {
@@ -166,29 +171,6 @@ async function storageSyncGet(keys) {
     });
 }
 
-// from WaitForElement.js
-// wait for an element to appear in the DOM, or return it if already present. 
-// selector: query string, parent: Node
-async function waitForElement(selector, parent) {
-    if (!parent) {
-        parent = document.body;
-    }
-    
-    const element = parent.querySelector(selector);
-    if (element) {
-        return element;
-    }
-
-    return new Promise((resolve) => {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(() => {
-                const element = parent.querySelector(selector);
-                if (element) {
-                    observer.disconnect();
-                    resolve(element);
-                }
-            });
-        });
-        observer.observe(parent, {childList: true, subtree: true});
-    });
+function print(message) {
+    console.log("RYM:", message);
 }

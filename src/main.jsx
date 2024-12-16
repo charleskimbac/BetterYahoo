@@ -28,7 +28,7 @@ function setWarningIfOnNewUI(tabURLs) {
     for (let i = 0; i < tabURLs.length; i++) {
         const url = tabURLs[i];
         if (url.includes("/n/")) { // new UI format: "mail.yahoo.com/n/folders/[mailboxNumber]"; old: "mail.yahoo.com/d/folders/[mailboxNumber]"
-            warning = <>Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail.</>;
+            warning = <>Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail by pressing the button at the top right of the page.</>;
                 /*<br/>
                 <button onClick={() => optOutNewUI(tabIDs)}>Opt out</button>*/
             break;

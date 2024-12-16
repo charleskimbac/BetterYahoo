@@ -1,5 +1,5 @@
 // wait for an element to appear in the DOM, or return it if already present. 
-// selector: query string, parent: Node
+// selector: query string, parent: Node to watch
 async function waitForElement(selector, parent) {
     if (!parent) {
         parent = document.body;
