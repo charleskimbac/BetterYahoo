@@ -31,14 +31,30 @@ async function main() {
 
     // load saved order
     const storedObj = await chrome.storage.sync.get("addresses"); // obj
-    const addressOrderArr = storedObj && storedObj.addresses;
+    const savedAddressOrderArr = storedObj && storedObj.addresses;
     // print(storedObj);
-    print(addressOrderArr);
+    print(savedAddressOrderArr);
 
-    if (addressOrderArr) { // if has stored order
-        sortMailboxes();
-    } else {
-        
+    if (savedAddressOrderArr) { // if has stored order
+        // sort mailboxes
+        // check if new mailboxes added, not accounted for
+        const numNewMailboxes = mailboxElementsArr.length - savedAddressOrderArr.length;
+        print(numNewMailboxes);
+        if (numNewMailboxes > 0) {
+            
+            savedAddressOrderArr.push(...)
+        }
+
+        savedAddressOrderArr.forEach((address) => {
+            const mailboxElement = addressToMailboxElement[address];
+            mailboxesParentElement.appendChild(mailboxElement);
+            print(mailboxElement);
+            print(address);
+        });
+    } else { // set new storage
+        const addresses = Object.keys(addressToMailboxElement);
+        chrome.storage.sync.set({"addresses": addresses});
+        // print(await chrome.storage.sync.get("addresses"));
     }
 
     // set sort by unread
@@ -51,22 +67,6 @@ async function main() {
     }
 
     setListeners();
-}
-
-function sortMailboxes() {
-    // check if new mailboxes added, not accounted for
-    const numNewMailboxes = mailboxElementsArr.length - addressOrderArr.length;
-    print(numNewMailboxes);
-    if (numNewMailboxes > 0) {
-        
-    }
-
-    addressOrderArr.forEach((address) => {
-        const mailboxElement = addressToMailboxElement[address];
-        mailboxesParentElement.appendChild(mailboxElement);
-        print(mailboxElement);
-        print(address);
-    });
 }
 
 function onLocationChange() {
