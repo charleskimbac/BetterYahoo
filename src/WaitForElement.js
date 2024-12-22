@@ -1,3 +1,7 @@
+/* eslint-disable no-unused-vars */
+
+// this is run first in the manifest, so just call the function as needed, no imports needed
+
 // wait for an element to appear in the DOM, or return it if already present. 
 // selector: query string, parent: Node to watch
 async function waitForElement(selector, parent) {
@@ -23,5 +27,3 @@ async function waitForElement(selector, parent) {
         observer.observe(parent, {childList: true, subtree: true});
     });
 }
-
-export default waitForElement;

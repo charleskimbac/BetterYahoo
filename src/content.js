@@ -1,60 +1,47 @@
-// clear for testing
-// chrome.storage.sync.remove("addresses");
-// chrome.storage.sync.remove("sortByUnread");
+/* global waitForElement */
 
-main();
+let mailboxesParentElement;
+let mailboxElementsArr;
+const addressToMailboxElement = {}; // address: mailbox
+
+(async () => {
+    try {
+        await main();
+    } catch (error) {
+        alert(error);
+    }
+})();
 async function main() {
+    // for testing
+    chrome.storage.sync.set({"addresses": ["charleskimbac@yahoo.com", "baccharleskim@gmail.com"]});
+    // -----------
+
     const onNewUI = isOnNewUI();
     if (onNewUI) {
         window.alert("Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail by pressing the button at the top right of the page.");
         return;
     }
-    // KNOWN BUG: WHEN EXT DOESNT WORK/LOAD THE SORT, SCROLL DOWN MAILBOX LIST. IT GETS DUPED!
-    // mailboxULelement and mailboxLiElements are removed and replaced SO WE NEED TO TRACK ALL DOC CHANGES 
-    // USING MUTATION OBSERVER TO MAKE SURE WE ARE USING LATEST ONE AND NOT THE ONE THAT WAS REPLACED!! YIPEEEEEEE
-    // todo: on replaced, remove all elems in old observer and refs, and redo all logic
 
     // let a "mailbox" be a given LI element under the UL element of class ".M_0.P_0.hd_n"
-
-    let mailboxesParentElement = document.querySelectorAll(".M_0.P_0.hd_n")[0]; // first of class "M_0 P_0 hd_n"
-    // print(mailboxesParentElement);
-    let mailboxElementsArr = Array.from(mailboxesParentElement.children);
-
-    const addressToMailboxElement = {}; // address: mailbox
+    mailboxesParentElement = document.querySelectorAll(".M_0.P_0.hd_n")[0]; // first of class "M_0 P_0 hd_n", ul element
+    mailboxElementsArr = Array.from(mailboxesParentElement.children);
 
     // fill addressToMailboxElement
     mailboxElementsArr.forEach((mailbox) => {
         const address = mailbox.children[0].getAttribute("data-test-account-email");
         addressToMailboxElement[address] = mailbox;
     });
-    // print(addressToMailboxElement);
 
-    // load saved order
+    // get saved data
     const storedObj = await chrome.storage.sync.get("addresses"); // obj
     const savedAddressOrderArr = storedObj && storedObj.addresses;
-    // print(storedObj);
-    print(savedAddressOrderArr);
+    console.log("RYM - got stored data:", savedAddressOrderArr);
 
     if (savedAddressOrderArr) { // if has stored order
-        // sort mailboxes
-        // check if new mailboxes added, not accounted for
-        const numNewMailboxes = mailboxElementsArr.length - savedAddressOrderArr.length;
-        print(numNewMailboxes);
-        if (numNewMailboxes > 0) {
-            
-            savedAddressOrderArr.push(...)
-        }
-
-        savedAddressOrderArr.forEach((address) => {
-            const mailboxElement = addressToMailboxElement[address];
-            mailboxesParentElement.appendChild(mailboxElement);
-            print(mailboxElement);
-            print(address);
-        });
+        loadSavedOrder(savedAddressOrderArr);
     } else { // set new storage
         const addresses = Object.keys(addressToMailboxElement);
         chrome.storage.sync.set({"addresses": addresses});
-        // print(await chrome.storage.sync.get("addresses"));
     }
 
     // set sort by unread
@@ -67,6 +54,31 @@ async function main() {
     }
 
     setListeners();
+}
+
+function loadSavedOrder(savedAddressOrderArr) {
+    // sort mailboxes
+    // check if new mailboxes added, not accounted for
+    const numNewMailboxes = mailboxElementsArr.length - savedAddressOrderArr.length;
+    console.log("RYM - number of all mailboxes:", mailboxElementsArr.length);
+    console.log("RYM - number of new mailboxes:", numNewMailboxes);
+    if (numNewMailboxes > 0) {
+        const newMailboxes = mailboxElementsArr.slice(mailboxElementsArr.length - numNewMailboxes, mailboxElementsArr.length);
+        savedAddressOrderArr.push(...newMailboxes);
+        chrome.storage.sync.set({"addresses": mailboxElementsArr});
+
+        console.log("RYM - added mailboxes:", ...newMailboxes);
+    }
+
+    // load sort
+    savedAddressOrderArr.forEach((address) => {
+        const mailboxElement = addressToMailboxElement[address];
+        mailboxesParentElement.appendChild(mailboxElement);
+        // console.log("RYM:", mailboxElement);
+        // console.log("RYM:", address);
+    });
+
+    mailboxElementsArr = Array.from(mailboxesParentElement.children); // update changes
 }
 
 function onLocationChange() {
@@ -82,11 +94,6 @@ function onLocationChange() {
     }
 }
 
-// new mailbox added since last sort, so the mailbox isn't stored rn
-function handleNewMailboxAdded() {
-
-}
-
 function isOnNewUI() {
     return location.href.includes("/n/"); // new UI format: "mail.yahoo.com/n/folders/[mailboxNumber]"; old: "mail.yahoo.com/d/folders/[mailboxNumber]"
 }
@@ -94,21 +101,21 @@ function isOnNewUI() {
 function setListeners() {
     chrome.runtime.onMessage.addListener((message, sender, sendRequest) => {
         if (message.task === "getAddresses") {
-            sendRequest(Object.keys(addressToLiElement));
-            // console.log("RYM-sent:", addressToLiElement);
+            sendRequest(Object.keys(addressToMailboxElement));
+            // console.log("RYM-sent:", addressToMailboxElement);
         } else if (message.task === "updateAddresses") {
             // active=from over=to
             const activeIndex = message.activeIndex;
             const overIndex = message.overIndex;
             
             if (activeIndex > overIndex) {
-                mailboxULelement.insertBefore(mailboxLiElements[activeIndex], mailboxLiElements[overIndex]);
+                mailboxesParentElement.insertBefore(mailboxElementsArr[activeIndex], mailboxElementsArr[overIndex]);
             } else {
-                mailboxULelement.insertBefore(mailboxLiElements[activeIndex], mailboxLiElements[overIndex].nextSibling);
+                mailboxesParentElement.insertBefore(mailboxElementsArr[activeIndex], mailboxElementsArr[overIndex].nextSibling);
             }
-            
-            mailboxLiElements = Array.from(mailboxULelement.children); // update changes
-            console.log("RYM-updated order:", mailboxLiElements);
+        
+            mailboxElementsArr = Array.from(mailboxesParentElement.children); // update changes
+            chrome.storage.sync.set({"addresses": mailboxElementsArr});
         } else if (message.task === "sortByUnread") {
             if (message.sortByUnread) { // turned on
                 window.addEventListener("locationchange", onLocationChange);
@@ -116,11 +123,6 @@ function setListeners() {
             } else {
                 window.removeEventListener("locationchange", onLocationChange);
             }
-        // } else if (message.task === "optOutNewUI") {
-        //     const optOutButton = document.querySelectorAll(".r_P.e_Z1pAdC9.A_6EGz.fd_N.u_e69.i_3ngpV.D_X.ab_C.gl_C.k_w.j4_n.lv4_2k4xdS.j0_1mc63A.H_72FG.P_r9KQe.q_ZiTj5d.b_dm5.C_sfJow.b4_dm5.q4_WEuPY.b0_Z2utlOw.q0_Z25M4so.p_R.Q_6Fd5.E_1DQFzi.y_1TqRq5.dq34_hP.p34_a.e34_Z1pAdC9.T34_0.L34_0.W34_6D6F.H34_6D6F.q34_wzKXL.O34_Z20hJ4G.h34_1DdG6g.lt34_C.ly34_2msHci.lx34_ZPrgjW.lz34_ZaEH55.C4_1GbO8e.ly36_2msHci.lx36_jhDhM.O36_1grVag.h36_Z1ihKFs.lt36_C.h38_a3DRd.lt38_C.ly38_1f1FRF.lx38_jhDhM.lz38_ZaEH55.I_ZprBTp")[0];
-        //     optOutButton.click();
-        //     const skipButton = document.querySelectorAll(".r_P.e_Z1mIQBG.A_6EGz.fd_N.u_e69.i_N.D_F.ab_C.gl_C.k_w.j4_1mc63A.lv4_Zz9dWH.j0_1mc63A.H_72FG.P_ODIwj.q_Z2c8wkG.b_n.C_Z1LGdeL.q4_Z2d7yvo.q0_Z2nG8r9")[0];
-        //     skipButton.click();
         } else {
             throw new Error("Unknown task");
         }
@@ -169,8 +171,4 @@ async function storageSyncGet(keys) {
             }
         });
     });
-}
-
-function print(message) {
-    console.log("RYM:", message);
 }
