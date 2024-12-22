@@ -2,7 +2,7 @@ import { React } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './popup/App.jsx';
 import "bootstrap/dist/css/bootstrap.min.css";
-import { tabsSendMessage, tabsQuery, storageSyncGet } from "../firefox/FirefoxMV2WebAPIChromeNamespace.js";
+import { tabsQuery, storageSyncGet } from "../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 let warning = ""; // to show with <App>. wrap warning in <></>
@@ -11,13 +11,13 @@ async function main() {
     const [tabIDs, activeTabIDs, tabURLs] = await getTabsData();
 
     let addresses = await getAddresses(tabIDs, activeTabIDs);
+    console.log("RYM - addresses:", addresses);
 
     const response1 = await storageSyncGet("sortByUnread");
     const sortByUnread = response1.sortByUnread;
 
     setWarningIfOnNewUI(tabURLs);
 
-    // console.log("main", addresses);
     root.render(
         <App initialAddresses={addresses} initialSortByUnread={sortByUnread} tabIDs={tabIDs} warning={warning} /> // pass all IDs so all tabs can be updated
     );
@@ -45,23 +45,12 @@ function optOutNewUI(tabIDs) {
 */
 
 // we just use tabIDs[0]
-async function getAddresses(tabIDs, activeTabIDs) {
-    const response = await storageSyncGet("addresses"); // an array
-    // console.log(response);
+async function getAddresses() {
+    const response = await chrome.storage.sync.get("addresses");
+    console.log(response);
 
     if (!response) { // if storage empty
-        // console.log("no addresses");
-        if (tabIDs.length == 0) { // no yahoo tabs open
-            showError("Please open a new Yahoo Mail tab and/or try again.");
-        } else if (tabIDs.length > 1) { // multiple yahoo tabs open
-            warning = <>If a recently added mailbox is not shown, please close all other Yahoo Mail tabs, reset order, and try again.</>;
-        }
-
-        let tabID = tabIDs[0];
-        if (activeTabIDs.length > 0) { // use active tab (focused tab in a window) if avail
-            tabID = activeTabIDs[0]; 
-        }
-        return await getAddressesFromPage(tabID);
+        showError("Please open a new Yahoo Mail tab and/or try again.");
     } else {
         return response.addresses;
     }
@@ -69,26 +58,9 @@ async function getAddresses(tabIDs, activeTabIDs) {
 
 function showError(error) {
     root.render(
-        <p class="m-2" style={{"width": "70%", "position": "relative", "left": "13%"}}>{error}</p>
+        <p className="m-2" style={{"width": "70%", "position": "relative", "left": "13%"}}>{error}</p>
     );
     throw new Error(error); // stop
-}
-
-async function getAddressesFromPage(tabID) {
-    console.log("getAddressesFromPage");
-
-    let addresses = null;
-    try {
-        addresses = await tabsSendMessage(tabID, {"task": "getAddresses"}, true);
-    } catch (error) { // content script not loaded
-        showError("Please open a new Yahoo Mail tab and/or try again.");
-    }
-
-    if (!addresses) { // tab not loaded
-        showError("Please open a new Yahoo Mail tab and/or try again.");
-    }
-    
-    return addresses;
 }
 
 // returns null if no tabs

@@ -8,11 +8,13 @@ const addressToMailboxElement = {}; // address: mailbox
     try {
         await main();
     } catch (error) {
+        console.log(error);
         alert(error);
     }
 })();
 async function main() {
     // for testing
+    // chrome.storage.sync.remove("addresses");
     chrome.storage.sync.set({"addresses": ["charleskimbac@yahoo.com", "baccharleskim@gmail.com"]});
     // -----------
 
@@ -42,6 +44,7 @@ async function main() {
     } else { // set new storage
         const addresses = Object.keys(addressToMailboxElement);
         chrome.storage.sync.set({"addresses": addresses});
+        console.log("RYM - set new, initial storage:", addresses);
     }
 
     // set sort by unread
@@ -52,30 +55,32 @@ async function main() {
         window.addEventListener("locationchange", onLocationChange);
         setSortByUnread(); // on initial load
     }
-
     setListeners();
 }
 
 function loadSavedOrder(savedAddressOrderArr) {
-    // sort mailboxes
     // check if new mailboxes added, not accounted for
+    // NEED TO REDO THIS PART!!! CHECK IF MAILBOXES HAVE BEEN REMOVED / ADDED !!!!!!!!!!!!!!!!!!!!!!!!
     const numNewMailboxes = mailboxElementsArr.length - savedAddressOrderArr.length;
     console.log("RYM - number of all mailboxes:", mailboxElementsArr.length);
     console.log("RYM - number of new mailboxes:", numNewMailboxes);
     if (numNewMailboxes > 0) {
-        const newMailboxes = mailboxElementsArr.slice(mailboxElementsArr.length - numNewMailboxes, mailboxElementsArr.length);
-        savedAddressOrderArr.push(...newMailboxes);
-        chrome.storage.sync.set({"addresses": mailboxElementsArr});
+        const newMailboxElementsArr = mailboxElementsArr.slice(mailboxElementsArr.length - numNewMailboxes + 1, mailboxElementsArr.length);
 
-        console.log("RYM - added mailboxes:", ...newMailboxes);
+        newMailboxElementsArr.forEach((element) => {
+            const address = element.children[0].getAttribute("data-test-account-email");
+            savedAddressOrderArr.push(address);
+            clog("added to storage", address, element);
+        });
+
+        chrome.storage.sync.set({"addresses": savedAddressOrderArr});
     }
 
     // load sort
+    console.log("RYM - sorting with savedAddressOrderArr:", savedAddressOrderArr);
     savedAddressOrderArr.forEach((address) => {
         const mailboxElement = addressToMailboxElement[address];
         mailboxesParentElement.appendChild(mailboxElement);
-        // console.log("RYM:", mailboxElement);
-        // console.log("RYM:", address);
     });
 
     mailboxElementsArr = Array.from(mailboxesParentElement.children); // update changes
@@ -171,4 +176,8 @@ async function storageSyncGet(keys) {
             }
         });
     });
+}
+
+function clog(purpose, ...values) {
+    console.log("[RYM]", purpose, "-", ...values);
 }

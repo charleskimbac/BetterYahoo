@@ -13,7 +13,7 @@ export default function App( { initialAddresses, initialSortByUnread, tabIDs, wa
   const [sortByUnread, setSortByUnread] = useState(initialSortByUnread);
 
   return <>
-    {warning && <div className="alert alert-warning p-2" role="alert">{warning}</div>}
+    {warning && <div className="alert alert-warning p-2" role="alert">{warning}</div>}  
     <h3 className="mb-1">Reorder your mailboxes</h3>
     <div className="mb-2">
       <input type="checkbox" id="sort-by-unread" checked={sortByUnread} onClick={() => toggleSortByUnread(tabIDs)}/>
