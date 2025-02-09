@@ -1,14 +1,14 @@
 /* eslint-disable no-unused-vars */
 
-// this is run first in the manifest, so just call the function as needed, no imports needed
+/*
+    from https://github.com/charleskimbac/common-files
 
-// wait for an element to appear in the DOM, or return it if already present. 
-// selector: query string, parent: Node to watch
-async function waitForElement(selector, parent) {
-    if (!parent) {
-        parent = document.body;
-    }
+    wait for an element to appear in the DOM, or return it if already present. 
+    selector: query string, parent (default: document.body): Node to watch
 
+    this is run first in the manifest, so just call the function as needed, no imports needed
+*/
+async function waitForElement(selector, parent = document.body) {
     const element = parent.querySelector(selector);
     if (element) {
         return element;

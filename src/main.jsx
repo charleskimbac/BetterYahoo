@@ -36,14 +36,6 @@ function setWarningIfOnNewUI(tabURLs) {
     }
 }
 
-/*
-function optOutNewUI(tabIDs) {
-    tabIDs.forEach((tabID) => {
-        tabsSendMessage(tabID, {"task": "optOutNewUI"});
-    });
-}
-*/
-
 // we just use tabIDs[0]
 async function getAddresses() {
     const response = await chrome.storage.sync.get("addresses");

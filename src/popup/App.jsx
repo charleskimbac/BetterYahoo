@@ -7,9 +7,8 @@ import SortableItem from "./SortableItem.jsx";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { tabsSendMessage } from "../../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
-export default function App( { initialAddresses, initialSortByUnread, tabIDs, warning } ) {
+export default function App({ initialAddresses, initialSortByUnread, tabIDs, warning }) {
   const [addresses, setAddresses] = useState(initialAddresses);
-  // console.log("passed:", addresses);
   const [sortByUnread, setSortByUnread] = useState(initialSortByUnread);
 
   return <>
@@ -19,7 +18,7 @@ export default function App( { initialAddresses, initialSortByUnread, tabIDs, wa
       <input type="checkbox" id="sort-by-unread" checked={sortByUnread} onClick={() => toggleSortByUnread(tabIDs)}/>
       <label style={{ "margin-left": "4px", "margin-bottom": "4px" }} htmlFor="sort-by-unread">Always Sort by Unread</label>
       <br/>
-      <button onClick={() => resetOrder(tabIDs)}>Reset Order</button>
+      <button onClick={() => resetOrder(tabIDs)}>Reset Order/Refresh Mailboxes</button>
     </div>
     <DndContext
       collisionDetection={closestCenter}
@@ -43,9 +42,9 @@ export default function App( { initialAddresses, initialSortByUnread, tabIDs, wa
         // ex: if moving email at index 2 to index 0, activeIndex will be 2, overIndex will be 0
         const activeIndex = addresses.indexOf(active.id);
         const overIndex = addresses.indexOf(over.id);
-        // console.log(activeIndex, overIndex);
 
         const updatedAddresses = arrayMove(addresses, activeIndex, overIndex);
+        chrome.storage.sync.set({"addresses": updatedAddresses});
 
         // toggle on all tabs
         if (tabIDs) {
@@ -93,12 +92,11 @@ export default function App( { initialAddresses, initialSortByUnread, tabIDs, wa
     setSortByUnread(checked); // update UI
 
     chrome.storage.sync.set({"sortByUnread": checked});
-    // console.log("checked:", checked);
   }
 }
   
 function resetOrder(tabIDs) {
-  const confirmed = window.confirm("This will refresh all of your Yahoo Mail tabs.\nAre you sure you want to reset the order back to default?");
+  const confirmed = window.confirm("If you recently added or removed a mailbox, you need to refresh your mailboxes.\nThis will reset the order back to default and will refresh all of your Yahoo Mail tabs.\nContinue?");
 
   if (confirmed) {
     chrome.storage.sync.remove("addresses"); // reset order

@@ -8,7 +8,7 @@
     "content_scripts": [
         {
             "matches": ["*://mail.yahoo.com/*"],
-            "js": ["src/WaitForElement.js"]
+            "js": ["src/globals/clog.js", "src/globals/WaitForElement.js"]
         },
         {
             "matches": ["*://mail.yahoo.com/*"],
