@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Reorder Yahoo Mailboxes",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "",
     "permissions": ["*://mail.yahoo.com/*", "storage"],
     "content_scripts": [
