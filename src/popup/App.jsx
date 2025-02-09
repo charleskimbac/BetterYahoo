@@ -5,7 +5,6 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-ki
 import { useState, React } from "react";
 import SortableItem from "./SortableItem.jsx";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { tabsSendMessage } from "../../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
 export default function App({ initialAddresses, initialSortByUnread, tabIDs, warning }) {
   const [addresses, setAddresses] = useState(initialAddresses);
@@ -50,7 +49,7 @@ export default function App({ initialAddresses, initialSortByUnread, tabIDs, war
         if (tabIDs) {
           tabIDs.forEach((tabID) => {
             const message = {"task": "updateAddresses", "activeIndex": activeIndex, "overIndex": overIndex};
-            tabsSendMessage(tabID, message);
+            chrome.tabs.sendMessage(tabID, message);
           });
         }
 
@@ -85,7 +84,7 @@ export default function App({ initialAddresses, initialSortByUnread, tabIDs, war
       if (tabIDs) {
         tabIDs.forEach((tabID) => {
           const message = {"task": "sortByUnread", "sortByUnread": checked};
-          tabsSendMessage(tabID, message);
+          chrome.tabs.sendMessage(tabID, message);
         });
       }
     }

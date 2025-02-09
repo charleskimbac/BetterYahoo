@@ -2,7 +2,6 @@ import { React } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './popup/App.jsx';
 import "bootstrap/dist/css/bootstrap.min.css";
-import { tabsQuery, storageSyncGet } from "../firefox/FirefoxMV2WebAPIChromeNamespace.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 let warning = ""; // to show with <App>. wrap warning in <></>
@@ -13,7 +12,7 @@ async function main() {
     let addresses = await getAddresses(tabIDs, activeTabIDs);
     console.log("RYM - addresses:", addresses);
 
-    const response1 = await storageSyncGet("sortByUnread");
+    const response1 = await chrome.storage.sync.get("sortByUnread");
     const sortByUnread = response1.sortByUnread;
 
     setWarningIfOnNewUI(tabURLs);
@@ -57,7 +56,7 @@ function showError(error) {
 
 // returns null if no tabs
 async function getTabsData() {
-    let tabs = await tabsQuery({url: "https://mail.yahoo.com/*"});
+    let tabs = await chrome.tabs.query({url: "https://mail.yahoo.com/*"});
     // console.log(tabs);
 
     const activeTabIDs = [];
