@@ -3,30 +3,24 @@
 let mailboxesParentElement;
 let mailboxElementsArr; // all children elems of mailboxesParentElement
 const addressToMailboxElement = {}; // address: mailbox
-let alreadyRun = false;
-let sorted = false;
 
-// (async () => {
-//     try {
-//         window.addEventListener("load", main);
-//         if (document.readyState == "complete") {
-//             await main();
-//         }
-//     } catch (error) {
-//         alert(error);
-//         clog("ERROR!", error);
-//     }
-// })();
-main();
+// for some reason (or to the best of my troubleshooting), yahoo reloads/replaces elements from 
+// before the page is not visible vs visible, and we need to make sure the elements we're using weren't replaced
+// this is why we check isConnected and use waitForElement with a timeout later
+if (document.visibilityState === "visible") {
+    clog("called since visible");
+    main();
+} else {
+    document.addEventListener("visibilitychange", runMain);
+
+    function runMain() {
+        clog("called by visibility change");
+        main();
+        document.removeEventListener("visibilitychange", runMain);
+    }
+}
 
 async function main() {
-    clog(document.readyState, window.location);
-    if (alreadyRun) {
-        return;
-    }
-    alreadyRun = true;
-    window.removeEventListener("load", main);
-
     const onNewUI = isOnNewUI();
     if (onNewUI) {
         window.alert("Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail by pressing the button at the top right of the page.");
@@ -34,7 +28,13 @@ async function main() {
     }
 
     // let a "mailbox" be a given LI element under the UL element of class ".M_0.P_0.hd_n"
-    mailboxesParentElement = document.querySelectorAll(".M_0.P_0.hd_n")[0]; // first of class "M_0 P_0 hd_n", ul element
+    mailboxesParentElement = document.querySelector(".M_0.P_0.hd_n"); // class "M_0 P_0 hd_n", ul element
+
+    while (!mailboxesParentElement.isConnected) {
+        mailboxesParentElement = await waitForElement(".M_0.P_0.hd_n", 400);
+        clog("mailboxesParentElement1: timed out");
+    }
+
     mailboxElementsArr = Array.from(mailboxesParentElement.children);
 
     // fill addressToMailboxElement
@@ -59,24 +59,16 @@ async function main() {
     // set sort by unread
     const response = await chrome.storage.sync.get("sortByUnread");
     if (!response) {
-        chrome.storage.sync.set({"sortByUnread": false});
+        chrome.storage.sync.set({"sortByUnread": false}); // off by def
     } else if (response.sortByUnread) {
         window.addEventListener("locationchange", onLocationChange);
         setSortByUnread(); // on initial load
     }
 
-    document.addEventListener("visibilitychange", () => {
-        clog("sorted?", sorted);
-        console.log("WHAAA");
-    });
     setListeners();
 }
 
 function loadSavedOrder(savedAddressOrderArr) {
-    // check if new mailboxes added, not accounted for
-    // NEED TO REDO THIS PART!!! CHECK IF MAILBOXES HAVE BEEN REMOVED / ADDED !!!!!!!!!!!!!!!!!!!!!!!!
-    
-
     // load sort
     clog("sorting with savedAddressOrderArr", savedAddressOrderArr);
     savedAddressOrderArr.forEach((address) => {
@@ -105,23 +97,33 @@ function isOnNewUI() {
 }
 
 function setListeners() {
-    chrome.runtime.onMessage.addListener((message, sender, sendRequest) => {
+    chrome.runtime.onMessage.addListener(async (message, sender, sendRequest) => {
         if (message.task === "getAddresses") {
             sendRequest(Object.keys(addressToMailboxElement));
         } else if (message.task === "updateAddresses") {
+            // storage already updated in App.jsx
+
             // active=from over=to
             const activeIndex = message.activeIndex;
             const overIndex = message.overIndex;
             
+            // change
+            clog("from, to", activeIndex, overIndex);
+
+            while (!mailboxesParentElement.isConnected) { // make sure list element still connected
+                mailboxesParentElement = await waitForElement(".M_0.P_0.hd_n", 1000);
+                clog("mailboxesParentElement2: timed out");
+            }
+
             if (activeIndex > overIndex) {
                 mailboxesParentElement.insertBefore(mailboxElementsArr[activeIndex], mailboxElementsArr[overIndex]);
             } else {
                 mailboxesParentElement.insertBefore(mailboxElementsArr[activeIndex], mailboxElementsArr[overIndex].nextSibling);
             }
         
-            mailboxElementsArr = Array.from(mailboxesParentElement.children); // update changes
+            mailboxElementsArr = Array.from(mailboxesParentElement.children); // update
+            clog("updated order", mailboxElementsArr);
 
-            // storage updated in App.jsx
         } else if (message.task === "sortByUnread") {
             if (message.sortByUnread) { // turned on
                 window.addEventListener("locationchange", onLocationChange);
@@ -133,23 +135,25 @@ function setListeners() {
     });
 }
 
-/*
-for some reason when you open a new Yahoo tab and you immediately switch to a different tab before the Yahoo tab finishes loading, the sortByButton can be queried and stored but not pressed. i think the button is like removed and replaced, idk why (i've spent/wasted days on this bug). so we have to run this on tab active status change
-*/
 async function setSortByUnread() {
     // click unread button after sortby is clicked (observer to wait for button to open)
     // start observing before clicking sortby
     clog("setting sort by unread...");
     const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
     let sortByButton = document.querySelector(sortByButtonQuery);
-    clog(sortByButton.isConnected);
     if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email
         clog("got sortByButton", sortByButton);
         sortByButton.click();
+
         clickUnread();
     } else {
         clog("waiting for sortByButton");
-        sortByButton = await waitForElement(sortByButtonQuery);
+        sortByButton = await waitForElement(sortByButtonQuery, 400);
+        if (!sortByButton) {
+            clog("sortByButton: timed out");
+            setSortByUnread();
+            return;
+        }
         clog("got sortByButton");
         sortByButton.click();
         clickUnread();
@@ -163,13 +167,15 @@ async function setSortByUnread() {
             unreadButton.click();
         } else {
             clog("waiting for unreadButton");
-            unreadButton = await waitForElement(unreadButtonQuery);
+            unreadButton = await waitForElement(unreadButtonQuery, 400);
+            if (!unreadButton) {
+                clog("unreadButton: timed out");
+                setSortByUnread();
+                return;
+            }
             clog("got unreadButton");
             unreadButton.click();
-
-            //setSortByUnread();
         }
-        sorted = true;
         clog("set by unread successfully");
     }
 }

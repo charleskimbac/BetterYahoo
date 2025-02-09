@@ -41,7 +41,7 @@ async function getAddresses() {
     const response = await chrome.storage.sync.get("addresses");
     console.log(response);
 
-    if (!response) { // if storage empty
+    if (!response || Object.keys(response).length == 0) { // if storage empty
         showError("Please open a new Yahoo Mail tab and/or try again.");
     } else {
         return response.addresses;
