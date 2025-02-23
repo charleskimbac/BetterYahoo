@@ -1,7 +1,7 @@
-# Reorder Yahoo Mailboxes
-Sort and reorder your Yahoo Mailboxes and always sort your mail by unread.  
+# BetterYahoo
+Customize your Yahoo Basic UI experience.
 
-<img src=images/example.png height="350px">
+IN DEV/BETA.
 
 ## Chrome Extension
 https://chromewebstore.google.com/detail/reorder-yahoo-mailboxes/eoaifcdijjicofbnifcmcmdjicbmofmp
