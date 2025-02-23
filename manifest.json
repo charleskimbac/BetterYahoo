@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Reorder Yahoo Mailboxes",
-    "version": "1.0.0",
-    "description": "Reorder your Yahoo Mailboxes and choose to always sort your mail by unread.",
+    "name": "BetterYahoo",
+    "version": "2.0.0",
+    "description": "Customize your Yahoo Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
     "content_scripts": [
@@ -22,8 +22,5 @@
     ],
     "icons": {
         "48": "icon.png"
-    },
-    "action": {
-        "default_popup": "dist/index.html"
     }
 }
