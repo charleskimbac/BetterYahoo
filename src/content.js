@@ -11,14 +11,14 @@ const addressToMailboxElement = {}; // address: mailbox
 
 // enums
 const UI = Object.freeze({
-    OLD:   Symbol("old"),
-    NEW:  Symbol("new"),
+    OLD: Symbol("old"),
+    NEW: Symbol("new"),
     BASIC: Symbol("basic")
 });
 
 const Screen = Object.freeze({
-    EMAIL_CONTENT:   Symbol("emailContent"),
-    ALL_EMAILS:  Symbol("allEmails"),
+    EMAIL_CONTENT: Symbol("emailContent"),
+    ALL_EMAILS: Symbol("allEmails"),
     SETTINGS: Symbol("settings")
 });
 
@@ -28,7 +28,7 @@ let currentScreen;
 let maxHeightVH = 77; // this is changed if we remove bottom control bar
 
 const defaultSettings = {
-    sortByUnread: true,
+    sortByUnread: false,
     hideRightPanelAds: true,
     deleteBottomControlBar: true,
     makeEmailContentScrollable: true,
@@ -52,27 +52,57 @@ async function main() {
     await getSettings();
     checkCurrentUI();
     if (currentUI === UI.BASIC) {
-        if (isOnEmailContentPage()) { // must check this before isonallmailpage
+        if (isOnEmailContentPage()) {
+            clog(settings);
             currentScreen = Screen.EMAIL_CONTENT;
-            hideRightPanelAds();
-            deleteBottomControlBar();
-            makeEmailContentScrollable(1);
-            makeMailboxSectionScrollable();
-            applyBetterEmailHeaderSpacing();
 
-        } else if (isOnAllEmailsPage()) {
+            if (settings.hideRightPanelAds)
+                hideRightPanelAds();
+
+            if (settings.deleteBottomControlBar)
+                deleteBottomControlBar();
+
+            if (settings.makeEmailContentScrollable)
+                makeEmailContentScrollable(1);
+
+            if (settings.makeMailboxSectionScrollable)
+                makeMailboxSectionScrollable();
+
+            if (settings.applyBetterEmailHeaderSpacing)
+                applyBetterEmailHeaderSpacing();
+
+        } else if (isOnSettingsPage()) {
+            
+        } else if (isOnAllEmailsPage()) { // must be checked last
+            clog(settings);
             currentScreen = Screen.ALL_EMAILS;
-            sortByUnread();
-            deleteBottomControlBar();
-            hideRightPanelAds();
-            removeTopAdBanner();
-            makeMailboxSectionScrollable();
-            makeEmailsSectionScrollable();
-            enlargeCheckboxes();
-            changeBackgroundColor();
+
+            if (settings.sortByUnread)
+                sortByUnread();
+
+            if (settings.deleteBottomControlBar)
+                deleteBottomControlBar();
+
+            if (settings.hideRightPanelAds)
+                hideRightPanelAds();
+
+            if (settings.removeTopAdBanner)
+                removeTopAdBanner();
+
+            if (settings.makeMailboxSectionScrollable)
+                makeMailboxSectionScrollable();
+
+            if (settings.makeEmailsSectionScrollable)
+                makeEmailsSectionScrollable();
+
+            if (settings.enlargeCheckboxes)
+                enlargeCheckboxes();
+
+            if (settings.changeBackgroundColor)
+                changeBackgroundColor();
 
             // only add labels if not on sort unread
-            if (!isOnUnreadSort()) {
+            if (settings.sortByUnread === false) {
                 addEmailDayLabels();
             }
         }
@@ -90,34 +120,58 @@ function changeBackgroundColor() {
 }
 
 async function getSettings() {
-    settings = chrome.storage.sync.get();
+    settings = await chrome.storage.sync.get();
     
-    if (!settings) {
+    if (!settings || Object.keys(settings).length === 0) {
         settings = defaultSettings;
         chrome.storage.sync.set(settings);
     }
 }
 
-function isOnUnreadSort() {
-    const select = document.querySelector("select[name='sort_option[top]'");
-    // where 3 means unread selected rn; we cant check url.includes("sortOrder=unread") bc link only updates 
-    // if apply is pressed twice consecutively, ie if user going from unread to else, we will fail to check correctly
-    return select.selectedIndex === 3;
-}
-
 function sortByUnread() {
     const select = document.querySelector("select[name='sort_option[top]'");
 
-    if (isOnUnreadSort()) {
-        clog("sorted by unread", true);
+    // get unreadOptionIndex
+    const unreadOptionElem = Array.from(select.options).find((elem) => {
+        if (elem.innerHTML === "Unread") {
+            return true;
+        }
+    });
+    const unreadOptionIndex = unreadOptionElem.index;
+
+    // check if sorted alr, we dont use and check locationhref for "sortOrder=unread" since
+    // we would need to reload twice instead of once
+    if (select.selectedIndex === unreadOptionIndex) {
         return;
     }
 
-    select.selectedIndex = 3;
+    select.selectedIndex = unreadOptionIndex;
 
     // submit
     const applyButton = select.parentNode.children[1];
     applyButton.click();
+
+    updateMailboxLinksToUnread();
+}
+
+function updateMailboxLinksToUnread() {
+    const ul = document.querySelector("ul[data-test-id=account-list]");
+    const liElems = Array.from(ul.children);
+
+    // https://mail.yahoo.com/b/folders/33?.src=ym&reason=myc&folderType=INBOX  : original href
+    // https://mail.yahoo.com/b/folders/folders=33&sortOrder=unread?.src=ym&reason=myc&folderType=INBOX   : new href
+    const beforeFolderNum = "https://mail.yahoo.com/b/folders/";
+
+    liElems.forEach((elem) => {
+        const a = elem.children[0];
+        const originalHref = a.href;
+        
+        // get foldernum
+        const indexEnd = originalHref.indexOf("?");
+        const folderNum = originalHref.substring(beforeFolderNum.length, indexEnd);
+
+        a.href = "/b/folders/folders=" + folderNum + "&sortOrder=unread?.src=ym&reason=basic_mail&folderType=INBOX";
+    });
 }
 
 function enlargeCheckboxes() {
@@ -142,20 +196,15 @@ function removeRightPanelAds() {
     td.remove();
 }
 
-function isOnEmailContentPage() { // must be checked before isonallmailpage
-    const url = location.href;
-    if (url.indexOf("/messages/") !== -1) {
-        return true;
-    }
-    return false;
-}
-
 function deleteBottomControlBar() {
     maxHeightVH += 5; // size of control bar to add
     const div = document.querySelector(".D_B.P_1Eu6qC.z_2wc7QY");
     div.remove();
 }
 
+/**
+ * this needs to be checked last, ie before isOnEmailContentPage(), isOnSettingsPage()
+ */
 function isOnAllEmailsPage() {
     const url = location.href;
     if (url.startsWith("https://mail.yahoo.com/b/folders/") ||
@@ -164,6 +213,22 @@ function isOnAllEmailsPage() {
             return true;
     }
     
+    return false;
+}
+
+function isOnEmailContentPage() {
+    const url = location.href;
+    if (url.indexOf("/messages/") !== -1) {
+        return true;
+    }
+    return false;
+}
+
+function isOnSettingsPage() {
+    const url = location.href;
+    if (url.indexOf("/settings/") !== -1) {
+        return true;
+    }
     return false;
 }
 
@@ -260,7 +325,7 @@ function addEmailDayLabels() {
 
     // if recieved this year, date is Mon dd
     // if recieved last year, date is mm/dd/yyyy, but we're not supporting this
-    let lastDate = "";
+    let lastDateAdded = "";
     for (let i = 0; i < receivedDates.length; i++) {
         let date = receivedDates[i];
 
@@ -268,11 +333,11 @@ function addEmailDayLabels() {
             date = todaysMonth + " " + todaysDateDD;
         }
 
-        if (date === lastDate) {
+        if (date === lastDateAdded) {
             continue;
         }
 
-        if (date.includes("/")) { // check if in mm/dd/yyyy format
+        if (date.includes("/")) { // check if in mm/dd/yyyy format, then not from this yr
             continue;
         }
 
@@ -296,7 +361,7 @@ function addEmailDayLabels() {
         } else {
             continue; // dont handle not same month tags ig
         }
-        lastDate = date;
+        lastDateAdded = date;
 
         // add labels
         // make elems
