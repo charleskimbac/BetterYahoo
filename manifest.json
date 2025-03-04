@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "BetterYahoo",
-    "version": "2.1.1",
+    "version": "2.1.0",
     "description": "Customize your Yahoo Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
@@ -18,6 +18,11 @@
         {
             "matches": ["*://mail.yahoo.com/*"],
             "js": ["src/content.js"]
+        },
+        {
+            "matches": ["*://mail.yahoo.com/*"],
+            "js": ["src/applyDarkTheme.js"],
+            "run_at": "document_start"
         }
     ],
     "action": {

@@ -6,6 +6,18 @@ let mailboxElementsArr; // all children elems of mailboxesParentElement
 const addressToMailboxElement = {}; // address: mailbox
 */
 
+
+/* to do:
+global search
+RYM in basic ui
+DOING RN: APPLY CSS DARK THEME BEFORE LOAD. SEE MANIFEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        {
+            "matches": ["*://mail.yahoo.com/*"],
+            "js": ["src/applyDarkTheme.js"],
+            "run_at": "document_start"
+        }
+*/
+
 // enums
 const UI = Object.freeze({
     OLD: Symbol("old"),
@@ -84,6 +96,9 @@ async function main() {
             if (settings.autoConfirmSelections)
                 autoConfirmSelections();
 
+            if (settings.sortByUnreadAlways)
+                updateMailboxLinksToUnread();
+
         } else if (isOnSettingsPage()) {
             
         } else if (isOnAllEmailsPage()) { // must be checked last
@@ -121,6 +136,11 @@ async function main() {
             if (settings.autoConfirmSelections)
                 autoConfirmSelections();
         }
+    }
+
+    if (location.href.startsWith("https://mail.yahoo.com/b/compose?")) { // fixes for now
+        makeMailboxSectionScrollable();
+        deleteBottomControlBar();
     }
 
     if (settings.backToOldUI || (settings.backToOldUI && location.href.startsWith("https://mail.yahoo.com/d/settings/"))) {
@@ -211,6 +231,11 @@ function replaceDarkCheckboxes() {
         const customLabel = document.createElement("label");
         customLabel.htmlFor = "customCheck" + i;
         customLabel.className = "checkbox-label";
+
+        // if old checkbox alr checked, set to checked (eg "select all" pressed)
+        if (oldCheckbox.checked) {
+            customCheckbox.click();
+        }
 
         // connect label to old checkbox
         customLabel.addEventListener("click", () => {
@@ -528,8 +553,8 @@ function useDarkTheme(page = Page.ALL_EMAILS) {
     document.head.append(style);
 
     // left side bar
-    const leftBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.x_Z14vXdP.W_3rdfm");
-    leftBarParent.classList.add("sidebar-theme");
+    // const leftBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.x_Z14vXdP.W_3rdfm");
+    // leftBarParent.classList.add("sidebar-theme");
 
     const defaultFoldersChildren = Array.from(document.querySelector("ul[data-test-id=system-folder-list]").children);
     const customFoldersChildren = Array.from(document.querySelector("ul[data-test-id=custom-folder-list]").children);
@@ -542,12 +567,12 @@ function useDarkTheme(page = Page.ALL_EMAILS) {
     });
 
     // right side bar
-    const rightBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
-    if (rightBarParent) {
-        rightBarParent.classList.add("sidebar-theme");
-    } else {
-        clog("no right bar parent found");
-    }
+    // const rightBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
+    // if (rightBarParent) {
+    //     rightBarParent.classList.add("sidebar-theme");
+    // } else {
+    //     clog("no right bar parent found");
+    // }
 
     // main center view
     const centerTopView = document.querySelectorAll("tr.W_6D6F")[10];
@@ -867,7 +892,6 @@ function addEmailDayLabels() {
             label = "Yesterday";
         } else if (daysDiff >= 2 && daysDiff <= 6) {
             label = weekFull.at(todaysDayIndex - daysDiff); // may have neg vals
-            clog(label, todaysDayIndex, daysDiff);
         } else if (daysDiff >= 7 && daysDiff < 14) {
             label = "Last week";
         } else {
