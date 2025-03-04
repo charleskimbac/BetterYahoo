@@ -1,13 +1,10 @@
 /* global waitForElement clog*/ // these are executed first in manifest, so are global everywhere
 
-
-// "action": {
-//     "default_popup": "dist/index.html"
-// }
-
+/*
 let mailboxesParentElement;
 let mailboxElementsArr; // all children elems of mailboxesParentElement
 const addressToMailboxElement = {}; // address: mailbox
+*/
 
 // enums
 const UI = Object.freeze({
@@ -16,29 +13,32 @@ const UI = Object.freeze({
     BASIC: Symbol("basic")
 });
 
-const Screen = Object.freeze({
+const Page = Object.freeze({
     EMAIL_CONTENT: Symbol("emailContent"),
     ALL_EMAILS: Symbol("allEmails"),
     SETTINGS: Symbol("settings")
 });
 
 let settings;
+
 let currentUI;
-let currentScreen;
+let currentPage;
 let maxHeightVH = 77; // this is changed if we remove bottom control bar
 
 const defaultSettings = {
-    sortByUnread: false,
-    hideRightPanelAds: true,
+    sortByUnreadAlways: false,
+    hideAds: true,
     deleteBottomControlBar: true,
     makeEmailContentScrollable: true,
     makeMailboxSectionScrollable: true,
     applyBetterEmailHeaderSpacing: true,
-    removeTopAdBanner: true,
     makeEmailsSectionScrollable: true,
     enlargeCheckboxes: true,
     addEmailDayLabels: true,
-    backToOldUI: false
+    backToOldUI: false,
+    useDarkTheme: false,
+    showFullNewMailCircleIndicator: true,
+    autoConfirmSelections: true
 };
 
 main();
@@ -51,13 +51,17 @@ async function main() {
 
     await getSettings();
     checkCurrentUI();
+
+    // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways()
     if (currentUI === UI.BASIC) {
         if (isOnEmailContentPage()) {
-            clog(settings);
-            currentScreen = Screen.EMAIL_CONTENT;
+            currentPage = Page.EMAIL_CONTENT;
 
-            if (settings.hideRightPanelAds)
-                hideRightPanelAds();
+            if (settings.backToOldUI)
+                backToOldUI();
+
+            if (settings.hideAds)
+                applyHideAdStyles();
 
             if (settings.deleteBottomControlBar)
                 deleteBottomControlBar();
@@ -71,23 +75,28 @@ async function main() {
             if (settings.applyBetterEmailHeaderSpacing)
                 applyBetterEmailHeaderSpacing();
 
+            if (settings.useDarkTheme)
+                useDarkTheme(Page.EMAIL_CONTENT);
+
+            if (settings.showFullNewMailCircleIndicator)
+                showFullNewMailCircleIndicator();
+
+            if (settings.autoConfirmSelections)
+                autoConfirmSelections();
+
         } else if (isOnSettingsPage()) {
             
         } else if (isOnAllEmailsPage()) { // must be checked last
-            clog(settings);
-            currentScreen = Screen.ALL_EMAILS;
+            currentPage = Page.ALL_EMAILS;
 
-            if (settings.sortByUnread)
-                sortByUnread();
+            if (settings.sortByUnreadAlways)
+                sortByUnreadAlways();
 
             if (settings.deleteBottomControlBar)
                 deleteBottomControlBar();
 
-            if (settings.hideRightPanelAds)
-                hideRightPanelAds();
-
-            if (settings.removeTopAdBanner)
-                removeTopAdBanner();
+            if (settings.hideAds)
+                applyHideAdStyles();
 
             if (settings.makeMailboxSectionScrollable)
                 makeMailboxSectionScrollable();
@@ -98,25 +107,462 @@ async function main() {
             if (settings.enlargeCheckboxes)
                 enlargeCheckboxes();
 
-            if (settings.changeBackgroundColor)
-                changeBackgroundColor();
+            if (settings.useDarkTheme)
+                useDarkTheme();
 
             // only add labels if not on sort unread
-            if (settings.sortByUnread === false) {
+            if (!isSortedByUnread()) {
                 addEmailDayLabels();
             }
+
+            if (settings.showFullNewMailCircleIndicator)
+                showFullNewMailCircleIndicator();
+
+            if (settings.autoConfirmSelections)
+                autoConfirmSelections();
         }
     }
-    
-    //backToOldUI();
+
+    if (settings.backToOldUI || (settings.backToOldUI && location.href.startsWith("https://mail.yahoo.com/d/settings/"))) {
+        backToOldUI();
+    }
 }
 
-function changeBackgroundColor() {
-    const table = document.querySelectorAll(".W_6D6F.H_6D6F.p_R.bo_BA")[3];
-    table.style = "background-color:rgb(223, 223, 223);";
+/*
+function searchFromAllMailboxes() {
+    const ids = [];
 
-    // const td = document.querySelector(".V_GM.I_Z1sX2Gk.x_Z14vXdP.W_3rdfm");
-    // td.style = "background-color: #e7e7e7;";
+    const mailboxes = Array.from(document.querySelectorAll("li.P_2aKN71.o_h]"));
+
+    // get account id
+    const input = document.querySelector("input[type=hidden][name=ACCOUNT_ID]");
+    const accountID = input.value;
+    
+}
+*/
+
+function applyHideAdStyles() {
+    const style = document.createElement("style");
+    style.id = "hideAdsStyle";
+    style.innerHTML = `
+        #google_ads_iframe_/22888152279/us/ymail/ros/dt/us_ymail_ros_dt_empty_folder_0__container__ { /* ad in spam/sent folder if no emails there */
+            display: none;
+        }
+
+        div[data-test-id=gam-iframe-basic-mail] { /* right panel ads */
+            visibility: hidden;
+        }
+
+        div[data-test-id=pencil-ad] { /* top bar ad */
+            display: none;
+        }
+    `;
+
+    document.head.append(style);
+}
+
+function replaceDarkCheckboxes() {
+    // css for custom checkbox
+    const style = document.createElement("style");
+    style.innerHTML = `
+        /* unchecked */
+        .checkbox-label {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #717171;
+            border-radius: 4px;
+            background-color: #0f2336;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            vertical-align: middle;
+        }
+
+        /* checked */
+        input[type=checkbox].customInputCheckbox:checked + .checkbox-label::after {
+            content: "✔";
+            font-size: 12px;
+            color: white;
+            background-color: rgb(0, 0, 0);
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+    `;
+    document.head.append(style);
+
+    const oldCheckboxes = document.querySelectorAll("input[type=checkbox][name='mids[]']");
+    const checkboxParent = document.querySelectorAll("td[data-test-id=icon-btn-checkbox]");
+
+    for (let i = 0; i < oldCheckboxes.length; i++) {
+        const parent = checkboxParent[i];
+        const oldCheckbox = oldCheckboxes[i];
+        
+        // input
+        const customCheckbox = document.createElement("input");
+        customCheckbox.type = "checkbox";
+        customCheckbox.className = "customInputCheckbox";
+        customCheckbox.id = "customCheck" + i;
+        customCheckbox.style.display = "none";
+
+        // label
+        const customLabel = document.createElement("label");
+        customLabel.htmlFor = "customCheck" + i;
+        customLabel.className = "checkbox-label";
+
+        // connect label to old checkbox
+        customLabel.addEventListener("click", () => {
+            oldCheckbox.click();
+        });
+
+        parent.insertBefore(customCheckbox, oldCheckbox);
+        parent.insertBefore(customLabel, oldCheckbox);
+
+        oldCheckbox.style.display = "none";
+    }
+}
+
+function showFullNewMailCircleIndicator() {
+    const style = document.createElement("style");
+    style.innerHTML = `
+        .f_r.t_r.o_h {
+            overflow: visible !important;
+        }
+    `;
+    document.head.append(style);
+}
+
+function useDarkTheme(page = Page.ALL_EMAILS) {
+    const style = document.createElement("style");
+        
+    const ICON_IMAGE_LINK = chrome.runtime.getURL("images/darkThemeIcons.png");
+
+    const hoverColor = "#19344F";
+    const centerColor = "rgb(15, 32, 48)";
+    const sidebarColor = "rgb(19 40 62)";
+
+    style.innerHTML = `
+        .sidebar-theme {
+            background-color: ${sidebarColor} !important;
+        }
+
+        .q_ZW7CQC { /* yahoo top page color */
+            background: linear-gradient(60deg, #350090, #2b3567, #211e45) !important;
+        }
+
+        .center-view-theme {
+            background-color: ${centerColor} !important;
+        }
+
+        a:link, a:visited { /* all (a) text, not !important */
+            color: white;
+        }
+
+        .f_l { /* "Folders" text on left sidebar */
+            color: white;
+        }
+
+        tr.i_6UHk.A_6EqO.I4_ZnMI27:hover { /* hover email color on allemail view */
+            background-color: ${hoverColor} !important;
+        }
+
+        .A_6EWk.P_2jIBWi.o_h.I4_ZrEPFE:hover { /* mailbox hover */
+            background-color: ${hoverColor} !important;
+        }
+
+        .A_6EqO.P_2jIBWi.o_h.I4_ZrEPFE:hover { /* main folders (inbox, etc) hover */
+            background-color: ${hoverColor} !important;
+        }
+
+        a.A_6EqO.Q_6DEy.o_h.G_e.P_3LQ7g.D_B.I_T.I4_ZrEPFE:hover { /* "New folder" hover in sidebar */
+            background-color: ${hoverColor} !important;
+        }
+
+        .u_b { /* unread emails bolder */
+            font-weight: 750 !important;
+        }
+
+        body {
+            scrollbar-color: #32485e #1e1e1e; /* scrollbar color */
+        }
+
+        button[value=markAsSpam] { /* Spam in allemail view */
+            color: white !important;
+        }
+
+        button[value=moveToFolder] { /* Delete text in allemail view */
+            color: white !important;
+        }
+
+        button[value=markAsNotSpam] { /* Not Spam in all spam view */
+            color: white !important;
+        }
+
+        .q_ZsN8VL { /* current folder highlight */
+            background: ${hoverColor} !important;
+        }
+
+        span[data-test-id=pageNumber] { /* page number in allemail view */
+            color: white;
+        }
+
+        .c26zcWk_I { /* Reply, Reply All, Forward in content page */
+            color: white !important;
+        }
+
+        .M_Z4bbOy.P_0.A_6FsP.t_l.C_Z281SGl.Y_fq7.U_6Eb4.I_ZkbNhI.W_6D6F {
+            color: white !important;
+            background-color: ${centerColor} !important;
+        }
+
+        span#nodin-inbox-pill { /* unread mail number in inbox left panel */
+            color: white !important;
+        }
+
+        .email-received-label {
+            color: white;
+        }
+    `;
+
+    // update icons to dark theme
+    style.innerHTML += `
+        #Atom .q_Z1dv4XS {
+        background: url(${ICON_IMAGE_LINK}) 0 -220px no-repeat !important
+        }
+
+        #Atom .q4_Z2pwHDv:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -240px no-repeat !important
+        }
+
+        #Atom .q_1sCMuN {
+        background: url(${ICON_IMAGE_LINK}) 0 -260px no-repeat !important
+        }
+
+        #Atom .q4_gB9Pb:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -280px no-repeat !important
+        }
+
+        #Atom .q_19TPEI {
+        background: url(${ICON_IMAGE_LINK}) 0 -1360px no-repeat !important
+        }
+
+        #Atom .q4_1rFlMJ:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -1400px no-repeat !important
+        }
+
+        #Atom .q_Z26LYT {
+        background: url(${ICON_IMAGE_LINK}) 0 -1380px no-repeat !important
+        }
+
+        #Atom .q_ZtaR9B {
+        background: url(${ICON_IMAGE_LINK}) 0 -20px no-repeat !important
+        }
+
+        #Atom .q4_24NiRX:hover,#Atom .q_24NiRX {
+        background: url(${ICON_IMAGE_LINK}) 0 -120px no-repeat !important
+        }
+
+        #Atom .q_23tTMg {
+        background: url(${ICON_IMAGE_LINK}) 0 -380px no-repeat !important
+        }
+
+        #Atom .q_Z1vgA6T {
+        background: url(${ICON_IMAGE_LINK}) 0 -180px no-repeat !important
+        }
+
+        #Atom .q4_Z1trjg:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -200px no-repeat !important
+        }
+
+        #Atom .q_RLFdl {
+        background: url(${ICON_IMAGE_LINK}) 0 -140px no-repeat !important
+        }
+
+        #Atom .q4_ZjeWrh:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -160px no-repeat !important
+        }
+
+        #Atom .q_Z1gsXbI {
+        background: url(${ICON_IMAGE_LINK}) 0 -700px no-repeat !important
+        }
+
+        #Atom .q4_dDgCl:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -760px no-repeat !important
+        }
+
+        #Atom .q_ZFBPTg {
+        background: url(${ICON_IMAGE_LINK}) 0 -820px no-repeat !important
+        }
+
+        #Atom .q4_NunTN:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -880px no-repeat !important
+        }
+
+        #Atom .q_Z2suAQl {
+        background: url(${ICON_IMAGE_LINK}) 0 -720px no-repeat !important
+        }
+
+        #Atom .q4_ZXnm2h:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -780px no-repeat !important
+        }
+
+        #Atom .q_Z1RDtyS {
+        background: url(${ICON_IMAGE_LINK}) 0 -840px no-repeat !important
+        }
+
+        #Atom .q4_2ihwHr:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -900px no-repeat !important
+        }
+
+        #Atom .q_1pEThX {
+        background: url(${ICON_IMAGE_LINK}) 0 -740px no-repeat !important
+        }
+
+        #Atom .q4_voLKm:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -800px no-repeat !important
+        }
+
+        #Atom .q_20w1zq {
+        background: url(${ICON_IMAGE_LINK}) 0 -860px no-repeat !important
+        }
+
+        #Atom .q4_16fT2O:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -920px no-repeat !important
+        }
+
+        #Atom .q_Z2tNYW3 {
+        background: url(${ICON_IMAGE_LINK}) 0 -980px no-repeat !important
+        }
+
+        #Atom .q4_Z1MF8Qh:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -1020px no-repeat !important
+        }
+
+        #Atom .q_SsICp {
+        background: url(${ICON_IMAGE_LINK}) 0 -1060px no-repeat !important
+        }
+
+        #Atom .q_ZADvbE {
+        background: url(${ICON_IMAGE_LINK}) 0 -1000px no-repeat !important
+        }
+
+        #Atom .q4_25umi2:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -1040px no-repeat !important
+        }
+
+        #Atom .q_ZixT2d {
+        background: url(${ICON_IMAGE_LINK}) 0 -1080px no-repeat !important
+        }
+
+        #Atom .q_ONM0v {
+        background: url(${ICON_IMAGE_LINK}) 0 -620px no-repeat !important
+        }
+
+        #Atom .q4_Z1yetjJ:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -660px no-repeat !important
+        }
+
+        #Atom .q_ZmcPE7 {
+        background: url(${ICON_IMAGE_LINK}) 0 -640px no-repeat !important
+        }
+
+        #Atom .q4_2jV1Oz:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -680px no-repeat !important
+        }
+
+        #Atom .q4_21PpF8:hover,#Atom .q_21PpF8 {
+        background: url(${ICON_IMAGE_LINK}) 0 -600px no-repeat !important
+        }
+
+        #Atom .q4_Z1eOt4A:hover,#Atom .q_Z1eOt4A {
+        background: url(${ICON_IMAGE_LINK}) 0 -480px no-repeat !important
+        }
+
+        #Atom .q_ZW3WVz {
+        background: url(${ICON_IMAGE_LINK}) 0 -520px no-repeat !important
+        }
+
+        #Atom .q_Z1wU5e2 {
+        background: url(${ICON_IMAGE_LINK}) 0 -400px no-repeat !important
+        }
+
+        #Atom .q4_x3gRu:hover,#Atom .q_x3gRu {
+        background: url(${ICON_IMAGE_LINK}) 0 -580px no-repeat !important
+        }
+
+        #Atom .q4_Z2MPoX:hover,#Atom .q_Z2MPoX {
+        background: url(${ICON_IMAGE_LINK}) 0 -460px no-repeat !important
+        }
+
+        #Atom .q_eWEI3 {
+        background: url(${ICON_IMAGE_LINK}) 0 -500px no-repeat !important
+        }
+
+        #Atom .q_ymEXc {
+        background: url(${ICON_IMAGE_LINK}) 0 -320px no-repeat !important
+        }
+
+        #Atom .q4_Z1OFAm3:hover {
+        background: url(${ICON_IMAGE_LINK}) 0 -360px no-repeat !important
+        }
+
+        #Atom .q_Z1cO1yO {
+        background: url(${ICON_IMAGE_LINK}) 0 -1140px no-repeat !important
+        }
+
+        #Atom .q_z3Ing {
+        background: url(${ICON_IMAGE_LINK}) 0 -1240px no-repeat !important
+        }
+
+        #Atom .q_ZBWThm {
+        background: url(${ICON_IMAGE_LINK}) 0 -1260px no-repeat !important
+        }
+
+        #Atom .q_1tjPTR {
+        background: url(${ICON_IMAGE_LINK}) 0 -1180px no-repeat !important
+        }
+        `;
+
+    document.head.append(style);
+
+    // left side bar
+    const leftBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.x_Z14vXdP.W_3rdfm");
+    leftBarParent.classList.add("sidebar-theme");
+
+    const defaultFoldersChildren = Array.from(document.querySelector("ul[data-test-id=system-folder-list]").children);
+    const customFoldersChildren = Array.from(document.querySelector("ul[data-test-id=custom-folder-list]").children);
+
+    defaultFoldersChildren.forEach((elem) => {
+        elem.classList.add("sidebar-theme");
+    });
+    customFoldersChildren.forEach((elem) => {
+        elem.classList.add("sidebar-theme");
+    });
+
+    // right side bar
+    const rightBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
+    if (rightBarParent) {
+        rightBarParent.classList.add("sidebar-theme");
+    } else {
+        clog("no right bar parent found");
+    }
+
+    // main center view
+    const centerTopView = document.querySelectorAll("tr.W_6D6F")[10];
+    if (centerTopView) {
+        centerTopView.classList.add("center-view-theme");
+    } else {
+        clog("no center top view found");
+    }
+
+    if (page === Page.ALL_EMAILS) { // in email content screen, let it be all white (normal) to ensure all content visible
+        const centerMainView = document.querySelectorAll(".W_6D6F.H_6D6F.p_R.bo_BA.ku_f")[2];
+        centerMainView.classList.add("center-view-theme");
+    }
+
+    replaceDarkCheckboxes();
 }
 
 async function getSettings() {
@@ -125,10 +571,47 @@ async function getSettings() {
     if (!settings || Object.keys(settings).length === 0) {
         settings = defaultSettings;
         chrome.storage.sync.set(settings);
+        clog("settings not found, set to default");
+    }
+
+    clog("settings", settings);
+}
+
+// check if sorted alr, we dont use and check location.href for "sortOrder=unread" since
+// we could be sorted without that in the url
+// should be same as first few lines of sortByUnreadAlways()
+function isSortedByUnread() {
+    const select = document.querySelector("select[name='sort_option[top]'");
+
+    if (!select) {
+        clog("select not found");
+        return false;
+    }
+
+    // get unreadOptionIndex
+    const unreadOptionElem = Array.from(select.options).find((elem) => {
+        if (elem.innerHTML === "Unread") {
+            return true;
+        }
+    });
+
+    let unreadOptionIndex;
+    if (!unreadOptionElem) {
+        clog("unreadOptionElem not found");
+        return false;
+    }
+
+    unreadOptionIndex = unreadOptionElem.index;
+
+    if (select.selectedIndex === unreadOptionIndex) {
+        return true;
     }
 }
 
-function sortByUnread() {
+function sortByUnreadAlways() {
+    updateMailboxLinksToUnread();
+
+    // these first few lines should be same as isSortedByUnread() but lol
     const select = document.querySelector("select[name='sort_option[top]'");
 
     // get unreadOptionIndex
@@ -139,9 +622,10 @@ function sortByUnread() {
     });
     const unreadOptionIndex = unreadOptionElem.index;
 
-    // check if sorted alr, we dont use and check locationhref for "sortOrder=unread" since
-    // we would need to reload twice instead of once
+    // check if sorted alr, we dont use and check location.href for "sortOrder=unread" since
+    // we could be sorted without that in the url
     if (select.selectedIndex === unreadOptionIndex) {
+        clog("already sorted by unread");
         return;
     }
 
@@ -150,8 +634,6 @@ function sortByUnread() {
     // submit
     const applyButton = select.parentNode.children[1];
     applyButton.click();
-
-    updateMailboxLinksToUnread();
 }
 
 function updateMailboxLinksToUnread() {
@@ -186,20 +668,40 @@ function applyBetterEmailHeaderSpacing() {
     h2.style = "max-height: 80%;"; // better, at least while maximized lol
 }
 
-function hideRightPanelAds() {
-    const td = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
-    td.style = "visibility: hidden;";
-}
+function autoConfirmSelections() {
+    const toolbarSelect = document.querySelector("select[name='toolbar_option[top]']");
+    const sortSelect = document.querySelector("select[name='sort_option[top]']");
+    const jumpToSelect = document.querySelector("select[name=jumpTo]");
 
-function removeRightPanelAds() {
-    const td = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
-    td.remove();
+    const toolbarSubmit = document.querySelector("button[name=toolbar_action]");
+    const sortSubmit = document.querySelector("button[name=sort_action]");
+    const jumpToSubmit = document.querySelector("#headerGoButton");
+
+    const selects = [toolbarSelect, sortSelect, jumpToSelect];
+    const buttons = [toolbarSubmit, sortSubmit, jumpToSubmit];
+
+    for (let i = 0; i < buttons.length; i++) {
+        if (!selects[i] || !buttons[i]) {
+            clog("select or button not found");
+            continue;
+        }
+
+        buttons[i].style.display = "none";
+        selects[i].onchange = () => {
+            buttons[i].click();
+        };
+    }
 }
 
 function deleteBottomControlBar() {
     maxHeightVH += 5; // size of control bar to add
     const div = document.querySelector(".D_B.P_1Eu6qC.z_2wc7QY");
-    div.remove();
+
+    if (div) {
+        div.remove();
+    } else {
+        clog("no control bar to remove");
+    }
 }
 
 /**
@@ -230,13 +732,6 @@ function isOnSettingsPage() {
         return true;
     }
     return false;
-}
-
-// removes inbox, contacts, notepad, calendar tabs; this also removes "switch to standard version" button!
-// since this pushes everything up, theres white space at the bottom now we need to chagne the maxheight props below if this is enabled. do this latatatatatatatata!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-function deleteSmallNavBar() {
-    const td = document.querySelector(".V_GM.o_h.I_Z26KQwA.q_ZS20W8");
-    td.remove();
 }
 
 function makeEmailContentScrollable(offset) { // +1 offset for when in emailcontent page
@@ -296,26 +791,56 @@ function checkCurrentUI() {
 // THIS ONLY WORKS IF IN DEFAULT ORDER (sorted by received date)
 // Today, Yesterday, Thursday, Monday, (other days), Last week; NOT SUPPORTED: last month, year, etc
 function addEmailDayLabels() {
-    const dateObj = new Date();
-    const todaysDateDD = dateObj.getDate();
-    const todaysMonth = dateObj.toLocaleString("default", { month: "short" });
-    const todaysDayIndex = dateObj.getDay();
+    const todaysDate = new Date();
+    const todaysDayIndex = todaysDate.getDay();
 
     const mailElems = Array.from(document.querySelectorAll("tr[data-test-id=message-list-item]"));
 
+    // we use Dates for easy comparing later, esp across months
     const receivedDatesToElement = {};
-    const receivedDates = mailElems.map((elem) => { // MM DD
+    const receivedDates = mailElems.map((elem) => { // for each email, get Date object of received date
         const td = elem.children[6];
         const a = td.children[0];
         const span = a.children[0];
-        let date = span.innerHTML;
 
-        if (date.includes(":")) {
-            date = todaysMonth + " " + todaysDateDD; // it's in time format (bc received today), change to todays date
+        // if recieved this year, timestamp is Mon dd
+        // otherwise, timestamp is mm/dd/yyyy
+        const timestamp = span.innerHTML;
+
+        let date;
+        if (timestamp.indexOf("/") !== -1) { // not this yr
+            // check what format
+            const locale = navigator.languages[0];
+           
+            let mm, dd, yyyy;
+            if (locale == "en-US") {
+                [mm, dd, yyyy] = timestamp.split("/");
+            } else {
+                [dd, mm, yyyy] = timestamp.split("/"); // tbh no clue if this is shown
+            }
+
+            dd = parseInt(dd);
+            mm = parseInt(mm) - 1; // 0-based
+            yyyy = parseInt(yyyy);
+
+            date = new Date(yyyy, mm, dd);
+        } else if (timestamp.indexOf(":") !== -1) { // today
+            date = todaysDate; // it's in time format (bc received today), change to todays date
+        } else {
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+            let [mon, dd] = timestamp.split(" ");
+            let monthIndex = months.indexOf(mon); // 0-based
+            let day = parseInt(dd);
+
+            date = new Date(todaysDate.getFullYear(), monthIndex, day);
         }
 
-        if (!receivedDatesToElement[date]) { // only first element for where label to put before
-            receivedDatesToElement[date] = elem;
+        // since we cant use Dates as index bc they are objects
+        const YYYYMMDD = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        if (!receivedDatesToElement[YYYYMMDD]) { // save only first element of this date
+            receivedDatesToElement[YYYYMMDD] = elem;
         }
         return date;
     });
@@ -323,50 +848,37 @@ function addEmailDayLabels() {
 
     const weekFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-    // if recieved this year, date is Mon dd
-    // if recieved last year, date is mm/dd/yyyy, but we're not supporting this
-    let lastDateAdded = "";
+    let lastDateAdded;
     for (let i = 0; i < receivedDates.length; i++) {
         let date = receivedDates[i];
 
-        if (date.includes(":")) { // date in time format eg 2:00 AM = recieved today
-            date = todaysMonth + " " + todaysDateDD;
-        }
-
-        if (date === lastDateAdded) {
-            continue;
-        }
-
-        if (date.includes("/")) { // check if in mm/dd/yyyy format, then not from this yr
+        if (lastDateAdded && date.getTime() === lastDateAdded.getTime()) { // alr added
             continue;
         }
 
         let label = "";
 
-        const dateMonth = date.substring(0, 3);
-        const dateDD = date.substring(4, date.length);
+        const timeDiff = todaysDate.getTime() - date.getTime();
+        const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
 
-        if (dateMonth === todaysMonth) { // same month
-            const diff = todaysDateDD - dateDD;
-
-            if (diff === 0) {
-                label = "Today";
-            } else if (diff === 1) {
-                label = "Yesterday";
-            } else if (diff >= 2 && diff <= 6) {
-                label = weekFull[todaysDayIndex - diff];
-            } else if (diff >= 7 && diff < 14) {
-                label = "Last week";
-            }
+        if (daysDiff === 0) {
+            label = "Today";
+        } else if (daysDiff === 1) {
+            label = "Yesterday";
+        } else if (daysDiff >= 2 && daysDiff <= 6) {
+            label = weekFull.at(todaysDayIndex - daysDiff); // may have neg vals
+            clog(label, todaysDayIndex, daysDiff);
+        } else if (daysDiff >= 7 && daysDiff < 14) {
+            label = "Last week";
         } else {
-            continue; // dont handle not same month tags ig
+            continue;
         }
+
         lastDateAdded = date;
 
-        // add labels
-        // make elems
+        // add label
         const tr = document.createElement("tr");
-        tr.className = "H_0 i_0";
+        tr.className = "H_0 i_0 email-received-label";
 
         const td = document.createElement("td");
         td.className = "H_0 i_0";
@@ -374,13 +886,14 @@ function addEmailDayLabels() {
         td.setAttribute("colspan", "8");
 
         const p = document.createElement("p");
-        p.style = "font-weight: bold;";
+        p.style = "font-weight: bold; margin-top: 3px;";
         p.innerHTML = label;
 
-        // appends
         td.append(p);
         tr.append(td);
-        const elem = receivedDatesToElement[date];
+        
+        const YYYYMMDD = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const elem = receivedDatesToElement[YYYYMMDD];
         elem.parentNode.insertBefore(tr, elem);
 
         if (label === "Last week") { // stop after this label added once
@@ -391,55 +904,8 @@ function addEmailDayLabels() {
     }
 }
 
-function removeTopAdBanner() {
-    const div = document.querySelector("div[data-test-id=pencil-ad]");
-    div.remove();
-}
-
 function alert(message) {
     window.alert(message);
-}
-
-async function stuffidk() {
-    // let a "mailbox" be a given LI element under the UL element of class ".M_0.P_0.hd_n"
-    mailboxesParentElement = document.querySelector(".M_0.P_0.hd_n"); // class "M_0 P_0 hd_n", ul element
-
-    while (!mailboxesParentElement.isConnected) {
-        mailboxesParentElement = await waitForElement(".M_0.P_0.hd_n", 400);
-        clog("mailboxesParentElement1: timed out");
-    }
-
-    mailboxElementsArr = Array.from(mailboxesParentElement.children);
-
-    // fill addressToMailboxElement
-    mailboxElementsArr.forEach((mailbox) => {
-        const address = mailbox.children[0].getAttribute("data-test-account-email");
-        addressToMailboxElement[address] = mailbox;
-    });
-
-    // get saved data
-    const storedObj = await chrome.storage.sync.get("addresses"); // obj
-    const savedAddressOrderArr = storedObj && storedObj.addresses;
-    clog("got stored data", savedAddressOrderArr);
-
-    if (savedAddressOrderArr) { // if has stored order
-        loadSavedOrder(savedAddressOrderArr);
-    } else { // set new storage
-        const addresses = Object.keys(addressToMailboxElement);
-        chrome.storage.sync.set({"addresses": addresses});
-        clog("set new, initial storage", addresses);
-    }
-
-    // set sort by unread
-    const response = await chrome.storage.sync.get("sortByUnread");
-    if (!response) {
-        chrome.storage.sync.set({"sortByUnread": false}); // off by def
-    } else if (response.sortByUnread) {
-        window.addEventListener("locationchange", onLocationChange);
-        setSortByUnread(); // on initial load
-    }
-
-    setListeners();
 }
 
 async function backToOldUI() {
@@ -452,7 +918,6 @@ async function backToOldUI() {
     } else if (location.href.startsWith("https://mail.yahoo.com/b/")) { // from basic to /d/
         window.location.replace("https://mail.yahoo.com/d/settings/1");
     } else if (location.href.startsWith("https://mail.yahoo.com/d/settings/")) { // from /d/ settings to press back
-        currentUI = UI.OLD;
         const backButton = await waitForElement(".P_2jztU.D_F.F_n");
         backButton.click();
     }
@@ -487,6 +952,49 @@ async function backToOldUI() {
     }
 }
 
+/*
+async function stuffidk() {
+    // let a "mailbox" be a given LI element under the UL element of class ".M_0.P_0.hd_n"
+    mailboxesParentElement = document.querySelector(".M_0.P_0.hd_n"); // class "M_0 P_0 hd_n", ul element
+
+    while (!mailboxesParentElement.isConnected) {
+        mailboxesParentElement = await waitForElement(".M_0.P_0.hd_n", 400);
+        clog("mailboxesParentElement1: timed out");
+    }
+
+    mailboxElementsArr = Array.from(mailboxesParentElement.children);
+
+    // fill addressToMailboxElement
+    mailboxElementsArr.forEach((mailbox) => {
+        const address = mailbox.children[0].getAttribute("data-test-account-email");
+        addressToMailboxElement[address] = mailbox;
+    });
+
+    // get saved data
+    const storedObj = await chrome.storage.sync.get("addresses"); // obj
+    const savedAddressOrderArr = storedObj && storedObj.addresses;
+    clog("got stored data", savedAddressOrderArr);
+
+    if (savedAddressOrderArr) { // if has stored order
+        loadSavedOrder(savedAddressOrderArr);
+    } else { // set new storage
+        const addresses = Object.keys(addressToMailboxElement);
+        chrome.storage.sync.set({"addresses": addresses});
+        clog("set new, initial storage", addresses);
+    }
+
+    // set sort by unread
+    const response = await chrome.storage.sync.get("sortByUnreadAlways");
+    if (!response) {
+        chrome.storage.sync.set({"sortByUnreadAlways": false}); // off by def
+    } else if (response.sortByUnreadAlways) {
+        window.addEventListener("locationchange", onLocationChange);
+        setsortByUnreadAlways(); // on initial load
+    }
+
+    setListeners();
+}
+
 function loadSavedOrder(savedAddressOrderArr) {
     // load sort
     clog("sorting with savedAddressOrderArr", savedAddressOrderArr);
@@ -507,12 +1015,8 @@ function onLocationChange() {
         if (after.includes("/")) { // mailbox page shouldnt have / after root
             return;
         }
-        setSortByUnread();
+        setsortByUnreadAlways();
     }
-}
-
-function isOnNewUI() {
-    return location.href.includes("/n/"); // new UI format: "mail.yahoo.com/n/folders/[mailboxNumber]"; old: "mail.yahoo.com/d/folders/[mailboxNumber]"
 }
 
 function setListeners() {
@@ -543,10 +1047,10 @@ function setListeners() {
             mailboxElementsArr = Array.from(mailboxesParentElement.children); // update
             clog("updated order", mailboxElementsArr);
 
-        } else if (message.task === "sortByUnread") {
-            if (message.sortByUnread) { // turned on
+        } else if (message.task === "sortByUnreadAlways") {
+            if (message.sortByUnreadAlways) { // turned on
                 window.addEventListener("locationchange", onLocationChange);
-                setSortByUnread(); // set now
+                setsortByUnreadAlways(); // set now
             } else {
                 window.removeEventListener("locationchange", onLocationChange);
             }
@@ -554,7 +1058,7 @@ function setListeners() {
     });
 }
 
-async function setSortByUnread() {
+async function setsortByUnreadAlways() {
     // click unread button after sortby is clicked (observer to wait for button to open)
     // start observing before clicking sortby
     clog("setting sort by unread...");
@@ -570,7 +1074,7 @@ async function setSortByUnread() {
         sortByButton = await waitForElement(sortByButtonQuery, 400);
         if (!sortByButton) {
             clog("sortByButton: timed out");
-            setSortByUnread();
+            setsortByUnreadAlways();
             return;
         }
         clog("got sortByButton");
@@ -589,7 +1093,7 @@ async function setSortByUnread() {
             unreadButton = await waitForElement(unreadButtonQuery, 400);
             if (!unreadButton) {
                 clog("unreadButton: timed out");
-                setSortByUnread();
+                setsortByUnreadAlways();
                 return;
             }
             clog("got unreadButton");
@@ -598,3 +1102,4 @@ async function setSortByUnread() {
         clog("set by unread successfully");
     }
 }
+*/
