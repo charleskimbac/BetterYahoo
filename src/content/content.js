@@ -1,4 +1,4 @@
-/* global waitForElement clog*/ // these are executed first in manifest, so are global everywhere
+/* global waitForElement clog */ // these are executed first in manifest, so are global everywhere
 
 /*
 let mailboxesParentElement;
@@ -204,7 +204,7 @@ function replaceDarkCheckboxes() {
             content: "✔";
             font-size: 12px;
             color: white;
-            background-color: rgb(0, 0, 0);
+            background-color: rgb(15, 32, 48);
             position: absolute;
             left: 50%;
             top: 50%;

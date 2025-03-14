@@ -1,15 +1,11 @@
 /* eslint-disable no-unused-vars */
 
-/*
-    from https://github.com/charleskimbac/common-files
-
+/*  v2025.3.9 from https://github.com/charleskimbac/common-files
     wait for an element to appear in the DOM, or return it if already present. 
 
     selector: query selector string
     timeoutDuration: time (ms) until function will timeout and return null
-    parent (default: document.body): Node to watch
-
-    this is run first in the manifest, so just call the function as needed, no imports needed
+    parent: Node to watch (default: document.body)
 */
 async function waitForElement(selector, timeoutDuration, parent = document.body) {
     const element = parent.querySelector(selector);
@@ -37,3 +33,5 @@ async function waitForElement(selector, timeoutDuration, parent = document.body)
         }
     });
 }
+
+export default waitForElement;

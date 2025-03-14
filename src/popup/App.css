@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme { /* for custom tailwind values */
+  --spacing: 1px; 
+}
+
+@plugin "daisyui" {
+  themes: corporate --default;
+  exclude: rootscrollgutter;
+}
+
+.settingHeader {
+  @apply text-base p-5 font-bold;
+}
+
+#root {
+  @apply max-h-500 min-w-300 max-w-300;
+  
+}
+
+.section {
+  @apply pb-5;
+}

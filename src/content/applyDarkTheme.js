@@ -1,15 +1,16 @@
 main();
 async function main() {
-  const response = await chrome.storage.sync.get("useDarkTheme");
+  const response = await chrome.storage.sync.get("basicUI");
+  const useDarkTheme = response.basicUI && response.basicUI.useDarkTheme;
 
-  if (!response.useDarkTheme || Object.keys(response).length === 0) {
+  if (!useDarkTheme) {
     return;
   }
 
-  useDarkTheme();
+  applyDarkTheme();
 }
 
-function useDarkTheme(page) {
+function applyDarkTheme() {
   const style = document.createElement("style");
       
   const ICON_IMAGE_LINK = chrome.runtime.getURL("images/darkThemeIcons.png");
@@ -328,5 +329,5 @@ function useDarkTheme(page) {
       `;
 
   document.documentElement.append(style);
-  console.log("dark theme applied");
+  console.log("[BY] dark theme applied");
 }
