@@ -14,8 +14,7 @@
 }
 
 #root {
-  @apply max-h-500 min-w-300 max-w-300;
-  
+  @apply max-h-500 min-w-300 max-w-300 select-none;
 }
 
 .section {

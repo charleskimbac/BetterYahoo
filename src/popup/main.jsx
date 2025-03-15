@@ -3,21 +3,14 @@ import { createRoot } from 'react-dom/client'
 import clog from '../globals/clog.js'
 import App from './App.jsx'
 
-const userSettings = {
-  sortByUnreadAlways: false,
-  hideAds: true,
-  deleteBottomControlBar: true,
-  makeEmailContentScrollable: true,
-  makeMailboxSectionScrollable: true,
-  applyBetterEmailHeaderSpacing: true,
-  makeEmailsSectionScrollable: true,
-  enlargeCheckboxes: true,
-  addEmailDayLabels: true,
-  backToOldUI: false,
-  useDarkTheme: false,
-  showFullNewMailCircleIndicator: true,
-  autoConfirmSelections: true
-};
+
+/* todo
+make a warning if enabling old ui
+note that ext only works for basic or old ui
+donate
+*/
+
+// PRESETS START HERE
 
 const OLD_UI_SETTINGS = ["backToOldUI"];
 const BASIC_UI_SETTINGS = ["sortByUnreadAlways", "hideAds", "enlargeCheckboxes", "addEmailDayLabels", "useDarkTheme", "autoConfirmSelections"];
@@ -32,7 +25,7 @@ const SETTING_TO_LABEL_TEXT = {
   applyBetterEmailHeaderSpacing: "Improve email header spacing",
   makeEmailsSectionScrollable: "Improve page scrollability",
   enlargeCheckboxes: "Enlarge checkboxes",
-  addEmailDayLabels: "Bring back email receive day labels",
+  addEmailDayLabels: "Add 'email receive day' labels",
   backToOldUI: "Go back to the old UI",
   useDarkTheme: "Use dark theme",
   showFullNewMailCircleIndicator: "Show full new mail circle indicator",
@@ -57,7 +50,28 @@ const SETTING_TO_MODAL_TEXT = {
 
 // PRESETS END HERE
 
+const userSettings = {
+  sortByUnreadAlways: false,
+  hideAds: true,
+  deleteBottomControlBar: true,
+  makeEmailContentScrollable: true,
+  makeMailboxSectionScrollable: true,
+  applyBetterEmailHeaderSpacing: true,
+  makeEmailsSectionScrollable: true,
+  enlargeCheckboxes: true,
+  addEmailDayLabels: true,
+  backToOldUI: false,
+  useDarkTheme: false,
+  showFullNewMailCircleIndicator: true,
+  autoConfirmSelections: true
+};
+
 let displayContent = false;
+// get from chrome storage  here and remove above !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+if (Object.keys(userSettings).length !== 0) {
+  displayContent = true;
+}
 
 
 const userOldUISettings = [];
