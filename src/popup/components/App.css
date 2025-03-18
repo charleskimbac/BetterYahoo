@@ -14,9 +14,18 @@
 }
 
 #root {
-  @apply max-h-500 min-w-300 max-w-300 select-none;
+  @apply p-15 max-h-450 min-w-350 max-w-350 select-none overflow-y-auto;
+  white-space: pre-wrap;
 }
 
 .section {
   @apply pb-5;
+}
+
+body {
+  @apply text-center;
+}
+
+a {
+  @apply text-blue-500;
 }

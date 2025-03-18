@@ -1,16 +1,10 @@
-import { useEffect, useRef } from "react";
+import { forwardRef } from "react";
 
 /** 
  * closeTypes: [ onOutsideClick, onBRButton, onTRButton ]  
  * BR = bottom right, TR = top right
  */
-function Modal({ setRef, closeTypes, BRButtonText, modalText, modalTitle }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    setRef(ref.current);
-  }, [setRef]);
-
+const Modal = forwardRef(function Modal({ closeTypes, BRButtonText, modalText, modalTitle }, ref) {
   return (
     <dialog ref={ref} className="modal">
       <div className="modal-box">
@@ -21,12 +15,12 @@ function Modal({ setRef, closeTypes, BRButtonText, modalText, modalTitle }) {
         }
 
         <h3 className="text-lg font-bold">{modalTitle}</h3>
-        <p className="py-4">{modalText}</p>
+        <p className="py-4 text-sm">{modalText}</p>
 
         { closeTypes.includes("onBRButton") &&
-          <div class="modal-action">
+          <div className="modal-action">
             <form method="dialog">
-              <button class="btn btn-sm">{BRButtonText || "Close"}</button>
+              <button className="btn btn-sm">{BRButtonText || "Close"}</button>
             </form>
           </div>
         }
@@ -39,6 +33,6 @@ function Modal({ setRef, closeTypes, BRButtonText, modalText, modalTitle }) {
       }
     </dialog>
   );
-}
+});
 
 export default Modal;

@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 /*  v2025.3.16 from https://github.com/charleskimbac/js-common-files
     wait for an element to appear in the DOM, or return it if already present. 
 
@@ -31,5 +33,3 @@ async function waitForElement(selector, timeoutDuration, parent = document.body)
         }
     });
 }
-
-export default waitForElement;

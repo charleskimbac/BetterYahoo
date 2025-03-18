@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 /* v2025.3.16 from https://github.com/charleskimbac/js-common-files
   console.log alternative so we can easily filter in console with TAG_NAME.
 
@@ -15,5 +17,3 @@ function clog(purpose, ...values) {
     console.log(`[${TAG_NAME}]`, purpose, "-", ...values); // prints: [TAGNAME] purpose - valuesToPrint
   }
 }
-
-export default clog;

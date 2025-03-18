@@ -1,4 +1,5 @@
-/* global waitForElement clog */ // these are executed first in manifest, so are global everywhere
+/* eslint-disable react-hooks/rules-of-hooks */
+/* global clog waitForElement */
 
 /*
 let mailboxesParentElement;
@@ -10,12 +11,6 @@ const addressToMailboxElement = {}; // address: mailbox
 /* to do:
 global search
 RYM in basic ui
-DOING RN: APPLY CSS DARK THEME BEFORE LOAD. SEE MANIFEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        {
-            "matches": ["*://mail.yahoo.com/*"],
-            "js": ["src/applyDarkTheme.js"],
-            "run_at": "document_start"
-        }
 */
 
 // enums
@@ -31,13 +26,13 @@ const Page = Object.freeze({
     SETTINGS: Symbol("settings")
 });
 
-let settings;
+let settings; // current user settings
 
 let currentUI;
-let currentPage;
 let maxHeightVH = 77; // this is changed if we remove bottom control bar
 
 const defaultSettings = {
+    sortByUnreadAlwaysOldUI: false,
     sortByUnreadAlways: false,
     hideAds: true,
     deleteBottomControlBar: true,
@@ -64,11 +59,20 @@ async function main() {
     await getSettings();
     checkCurrentUI();
 
+    // add new settings
+    const newSettings = [
+        "sortByUnreadAlwaysOldUI"
+    ];
+    newSettings.forEach(setting => {
+        if (!settings[setting]) {
+            settings[setting] = false;
+            chrome.storage.sync.set({[setting]: false });
+        }
+    });
+
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways()
     if (currentUI === UI.BASIC) {
         if (isOnEmailContentPage()) {
-            currentPage = Page.EMAIL_CONTENT;
-
             if (settings.backToOldUI)
                 backToOldUI();
 
@@ -99,11 +103,7 @@ async function main() {
             if (settings.sortByUnreadAlways)
                 updateMailboxLinksToUnread();
 
-        } else if (isOnSettingsPage()) {
-            
         } else if (isOnAllEmailsPage()) { // must be checked last
-            currentPage = Page.ALL_EMAILS;
-
             if (settings.sortByUnreadAlways)
                 sortByUnreadAlways();
 
@@ -126,9 +126,8 @@ async function main() {
                 useDarkTheme();
 
             // only add labels if not on sort unread
-            if (!isSortedByUnread()) {
+            if (!isSortedByUnread())
                 addEmailDayLabels();
-            }
 
             if (settings.showFullNewMailCircleIndicator)
                 showFullNewMailCircleIndicator();
@@ -136,11 +135,17 @@ async function main() {
             if (settings.autoConfirmSelections)
                 autoConfirmSelections();
         }
+    } else if (currentUI === UI.OLD) {
+        if (settings.sortByUnreadAlwaysOldUI) {
+            window.addEventListener("locationchange", () => setSortUnreadOldUI(5));
+            setSortUnreadOldUI(5);
+        }
     }
 
-    if (location.href.startsWith("https://mail.yahoo.com/b/compose?")) { // fixes for now
+    if (location.href.startsWith("https://mail.yahoo.com/b/compose?")) {
         makeMailboxSectionScrollable();
-        deleteBottomControlBar();
+        if (settings.deleteBottomControlBar)
+            deleteBottomControlBar();
     }
 
     if (settings.backToOldUI || (settings.backToOldUI && location.href.startsWith("https://mail.yahoo.com/d/settings/"))) {
@@ -160,6 +165,58 @@ function searchFromAllMailboxes() {
     
 }
 */
+
+// times to retry is for when we're in a page that doesn't have sortby button at all
+async function setSortUnreadOldUI(timesToRetry) {
+    if (timesToRetry === 0) {
+        clog("setSortUnreadOldUI: max retries reached");
+        return;
+    }
+    clog("setSortUnreadOldUI, times to retry", timesToRetry);
+
+    // click unread button after sortby is clicked (observer to wait for button to open)
+    // start observing before clicking sortby
+    clog("setting sort by unread...");
+    const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
+    let sortByButton = document.querySelector(sortByButtonQuery);
+    if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email
+        clog("got sortByButton", sortByButton);
+        sortByButton.click();
+
+        clickUnread();
+    } else {
+        clog("waiting for sortByButton");
+        sortByButton = await waitForElement(sortByButtonQuery, 400);
+        if (!sortByButton) {
+            clog("sortByButton: timed out");
+            setSortUnreadOldUI(--timesToRetry);
+            return;
+        }
+        clog("got sortByButton");
+        sortByButton.click();
+        clickUnread();
+    }
+
+    async function clickUnread() {
+        const unreadButtonQuery = "button[data-test-id='sort-by-unread']";
+        let unreadButton = document.querySelector(unreadButtonQuery);
+
+        if (unreadButton) {
+            unreadButton.click();
+        } else {
+            clog("waiting for unreadButton");
+            unreadButton = await waitForElement(unreadButtonQuery, 400);
+            if (!unreadButton) {
+                clog("unreadButton: timed out");
+                setSortUnreadOldUI(--timesToRetry);
+                return;
+            }
+            clog("got unreadButton");
+            unreadButton.click();
+        }
+        clog("set by unread successfully");
+    }
+}
 
 function applyHideAdStyles() {
     const style = document.createElement("style");
@@ -259,334 +316,211 @@ function showFullNewMailCircleIndicator() {
     document.head.append(style);
 }
 
-function useDarkTheme(page = Page.ALL_EMAILS) {
+function useDarkTheme() {
+    // updating icons (we do this with darkTheme.css for chrome but this is for firefox)
     const style = document.createElement("style");
-        
-    const ICON_IMAGE_LINK = chrome.runtime.getURL("images/darkThemeIcons.png");
-
-    const hoverColor = "#19344F";
-    const centerColor = "rgb(15, 32, 48)";
-    const sidebarColor = "rgb(19 40 62)";
+    style.id = "darkThemeIcons-from-content";
+    const darkThemeImagePath = chrome.runtime.getURL("images/darkThemeIcons.png");
 
     style.innerHTML = `
-        .sidebar-theme {
-            background-color: ${sidebarColor} !important;
+        #Atom .q_Z1dv4XS {
+        background: url(${darkThemeImagePath}) 0 -220px no-repeat !important
         }
-
-        .q_ZW7CQC { /* yahoo top page color */
-            background: linear-gradient(60deg, #350090, #2b3567, #211e45) !important;
+        
+        #Atom .q4_Z2pwHDv:hover {
+        background: url(${darkThemeImagePath}) 0 -240px no-repeat !important
         }
-
-        .center-view-theme {
-            background-color: ${centerColor} !important;
+        
+        #Atom .q_1sCMuN {
+        background: url(${darkThemeImagePath}) 0 -260px no-repeat !important
         }
-
-        a:link, a:visited { /* all (a) text, not !important */
-            color: white;
+        
+        #Atom .q4_gB9Pb:hover {
+        background: url(${darkThemeImagePath}) 0 -280px no-repeat !important
         }
-
-        .f_l { /* "Folders" text on left sidebar */
-            color: white;
+        
+        #Atom .q_19TPEI {
+        background: url(${darkThemeImagePath}) 0 -1360px no-repeat !important
         }
-
-        tr.i_6UHk.A_6EqO.I4_ZnMI27:hover { /* hover email color on allemail view */
-            background-color: ${hoverColor} !important;
+        
+        #Atom .q4_1rFlMJ:hover {
+        background: url(${darkThemeImagePath}) 0 -1400px no-repeat !important
         }
-
-        .A_6EWk.P_2jIBWi.o_h.I4_ZrEPFE:hover { /* mailbox hover */
-            background-color: ${hoverColor} !important;
+        
+        #Atom .q_Z26LYT {
+        background: url(${darkThemeImagePath}) 0 -1380px no-repeat !important
         }
-
-        .A_6EqO.P_2jIBWi.o_h.I4_ZrEPFE:hover { /* main folders (inbox, etc) hover */
-            background-color: ${hoverColor} !important;
+        
+        #Atom .q_ZtaR9B {
+        background: url(${darkThemeImagePath}) 0 -20px no-repeat !important
         }
-
-        a.A_6EqO.Q_6DEy.o_h.G_e.P_3LQ7g.D_B.I_T.I4_ZrEPFE:hover { /* "New folder" hover in sidebar */
-            background-color: ${hoverColor} !important;
+        
+        #Atom .q4_24NiRX:hover,#Atom .q_24NiRX {
+        background: url(${darkThemeImagePath}) 0 -120px no-repeat !important
         }
-
-        .u_b { /* unread emails bolder */
-            font-weight: 750 !important;
+        
+        #Atom .q_23tTMg {
+        background: url(${darkThemeImagePath}) 0 -380px no-repeat !important
         }
-
-        body {
-            scrollbar-color: #32485e #1e1e1e; /* scrollbar color */
+        
+        #Atom .q_Z1vgA6T {
+        background: url(${darkThemeImagePath}) 0 -180px no-repeat !important
         }
-
-        button[value=markAsSpam] { /* Spam in allemail view */
-            color: white !important;
+        
+        #Atom .q4_Z1trjg:hover {
+        background: url(${darkThemeImagePath}) 0 -200px no-repeat !important
         }
-
-        button[value=moveToFolder] { /* Delete text in allemail view */
-            color: white !important;
+        
+        #Atom .q_RLFdl {
+        background: url(${darkThemeImagePath}) 0 -140px no-repeat !important
         }
-
-        button[value=markAsNotSpam] { /* Not Spam in all spam view */
-            color: white !important;
+        
+        #Atom .q4_ZjeWrh:hover {
+        background: url(${darkThemeImagePath}) 0 -160px no-repeat !important
         }
-
-        .q_ZsN8VL { /* current folder highlight */
-            background: ${hoverColor} !important;
+        
+        #Atom .q_Z1gsXbI {
+        background: url(${darkThemeImagePath}) 0 -700px no-repeat !important
         }
-
-        span[data-test-id=pageNumber] { /* page number in allemail view */
-            color: white;
+        
+        #Atom .q4_dDgCl:hover {
+        background: url(${darkThemeImagePath}) 0 -760px no-repeat !important
         }
-
-        .c26zcWk_I { /* Reply, Reply All, Forward in content page */
-            color: white !important;
+        
+        #Atom .q_ZFBPTg {
+        background: url(${darkThemeImagePath}) 0 -820px no-repeat !important
         }
-
-        .M_Z4bbOy.P_0.A_6FsP.t_l.C_Z281SGl.Y_fq7.U_6Eb4.I_ZkbNhI.W_6D6F {
-            color: white !important;
-            background-color: ${centerColor} !important;
+        
+        #Atom .q4_NunTN:hover {
+        background: url(${darkThemeImagePath}) 0 -880px no-repeat !important
         }
-
-        span#nodin-inbox-pill { /* unread mail number in inbox left panel */
-            color: white !important;
+        
+        #Atom .q_Z2suAQl {
+        background: url(${darkThemeImagePath}) 0 -720px no-repeat !important
         }
-
-        .email-received-label {
-            color: white;
+        
+        #Atom .q4_ZXnm2h:hover {
+        background: url(${darkThemeImagePath}) 0 -780px no-repeat !important
+        }
+        
+        #Atom .q_Z1RDtyS {
+        background: url(${darkThemeImagePath}) 0 -840px no-repeat !important
+        }
+        
+        #Atom .q4_2ihwHr:hover {
+        background: url(${darkThemeImagePath}) 0 -900px no-repeat !important
+        }
+        
+        #Atom .q_1pEThX {
+        background: url(${darkThemeImagePath}) 0 -740px no-repeat !important
+        }
+        
+        #Atom .q4_voLKm:hover {
+        background: url(${darkThemeImagePath}) 0 -800px no-repeat !important
+        }
+        
+        #Atom .q_20w1zq {
+        background: url(${darkThemeImagePath}) 0 -860px no-repeat !important
+        }
+        
+        #Atom .q4_16fT2O:hover {
+        background: url(${darkThemeImagePath}) 0 -920px no-repeat !important
+        }
+        
+        #Atom .q_Z2tNYW3 {
+        background: url(${darkThemeImagePath}) 0 -980px no-repeat !important
+        }
+        
+        #Atom .q4_Z1MF8Qh:hover {
+        background: url(${darkThemeImagePath}) 0 -1020px no-repeat !important
+        }
+        
+        #Atom .q_SsICp {
+        background: url(${darkThemeImagePath}) 0 -1060px no-repeat !important
+        }
+        
+        #Atom .q_ZADvbE {
+        background: url(${darkThemeImagePath}) 0 -1000px no-repeat !important
+        }
+        
+        #Atom .q4_25umi2:hover {
+        background: url(${darkThemeImagePath}) 0 -1040px no-repeat !important
+        }
+        
+        #Atom .q_ZixT2d {
+        background: url(${darkThemeImagePath}) 0 -1080px no-repeat !important
+        }
+        
+        #Atom .q_ONM0v {
+        background: url(${darkThemeImagePath}) 0 -620px no-repeat !important
+        }
+        
+        #Atom .q4_Z1yetjJ:hover {
+        background: url(${darkThemeImagePath}) 0 -660px no-repeat !important
+        }
+        
+        #Atom .q_ZmcPE7 {
+        background: url(${darkThemeImagePath}) 0 -640px no-repeat !important
+        }
+        
+        #Atom .q4_2jV1Oz:hover {
+        background: url(${darkThemeImagePath}) 0 -680px no-repeat !important
+        }
+        
+        #Atom .q4_21PpF8:hover,#Atom .q_21PpF8 {
+        background: url(${darkThemeImagePath}) 0 -600px no-repeat !important
+        }
+        
+        #Atom .q4_Z1eOt4A:hover,#Atom .q_Z1eOt4A {
+        background: url(${darkThemeImagePath}) 0 -480px no-repeat !important
+        }
+        
+        #Atom .q_ZW3WVz {
+        background: url(${darkThemeImagePath}) 0 -520px no-repeat !important
+        }
+        
+        #Atom .q_Z1wU5e2 {
+        background: url(${darkThemeImagePath}) 0 -400px no-repeat !important
+        }
+        
+        #Atom .q4_x3gRu:hover,#Atom .q_x3gRu {
+        background: url(${darkThemeImagePath}) 0 -580px no-repeat !important
+        }
+        
+        #Atom .q4_Z2MPoX:hover,#Atom .q_Z2MPoX {
+        background: url(${darkThemeImagePath}) 0 -460px no-repeat !important
+        }
+        
+        #Atom .q_eWEI3 {
+        background: url(${darkThemeImagePath}) 0 -500px no-repeat !important
+        }
+        
+        #Atom .q_ymEXc {
+        background: url(${darkThemeImagePath}) 0 -320px no-repeat !important
+        }
+        
+        #Atom .q4_Z1OFAm3:hover {
+        background: url(${darkThemeImagePath}) 0 -360px no-repeat !important
+        }
+        
+        #Atom .q_Z1cO1yO {
+        background: url(${darkThemeImagePath}) 0 -1140px no-repeat !important
+        }
+        
+        #Atom .q_z3Ing {
+        background: url(${darkThemeImagePath}) 0 -1240px no-repeat !important
+        }
+        
+        #Atom .q_ZBWThm {
+        background: url(${darkThemeImagePath}) 0 -1260px no-repeat !important
+        }
+        
+        #Atom .q_1tjPTR {
+        background: url(${darkThemeImagePath}) 0 -1180px no-repeat !important
         }
     `;
-
-    // update icons to dark theme
-    style.innerHTML += `
-        #Atom .q_Z1dv4XS {
-        background: url(${ICON_IMAGE_LINK}) 0 -220px no-repeat !important
-        }
-
-        #Atom .q4_Z2pwHDv:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -240px no-repeat !important
-        }
-
-        #Atom .q_1sCMuN {
-        background: url(${ICON_IMAGE_LINK}) 0 -260px no-repeat !important
-        }
-
-        #Atom .q4_gB9Pb:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -280px no-repeat !important
-        }
-
-        #Atom .q_19TPEI {
-        background: url(${ICON_IMAGE_LINK}) 0 -1360px no-repeat !important
-        }
-
-        #Atom .q4_1rFlMJ:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -1400px no-repeat !important
-        }
-
-        #Atom .q_Z26LYT {
-        background: url(${ICON_IMAGE_LINK}) 0 -1380px no-repeat !important
-        }
-
-        #Atom .q_ZtaR9B {
-        background: url(${ICON_IMAGE_LINK}) 0 -20px no-repeat !important
-        }
-
-        #Atom .q4_24NiRX:hover,#Atom .q_24NiRX {
-        background: url(${ICON_IMAGE_LINK}) 0 -120px no-repeat !important
-        }
-
-        #Atom .q_23tTMg {
-        background: url(${ICON_IMAGE_LINK}) 0 -380px no-repeat !important
-        }
-
-        #Atom .q_Z1vgA6T {
-        background: url(${ICON_IMAGE_LINK}) 0 -180px no-repeat !important
-        }
-
-        #Atom .q4_Z1trjg:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -200px no-repeat !important
-        }
-
-        #Atom .q_RLFdl {
-        background: url(${ICON_IMAGE_LINK}) 0 -140px no-repeat !important
-        }
-
-        #Atom .q4_ZjeWrh:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -160px no-repeat !important
-        }
-
-        #Atom .q_Z1gsXbI {
-        background: url(${ICON_IMAGE_LINK}) 0 -700px no-repeat !important
-        }
-
-        #Atom .q4_dDgCl:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -760px no-repeat !important
-        }
-
-        #Atom .q_ZFBPTg {
-        background: url(${ICON_IMAGE_LINK}) 0 -820px no-repeat !important
-        }
-
-        #Atom .q4_NunTN:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -880px no-repeat !important
-        }
-
-        #Atom .q_Z2suAQl {
-        background: url(${ICON_IMAGE_LINK}) 0 -720px no-repeat !important
-        }
-
-        #Atom .q4_ZXnm2h:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -780px no-repeat !important
-        }
-
-        #Atom .q_Z1RDtyS {
-        background: url(${ICON_IMAGE_LINK}) 0 -840px no-repeat !important
-        }
-
-        #Atom .q4_2ihwHr:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -900px no-repeat !important
-        }
-
-        #Atom .q_1pEThX {
-        background: url(${ICON_IMAGE_LINK}) 0 -740px no-repeat !important
-        }
-
-        #Atom .q4_voLKm:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -800px no-repeat !important
-        }
-
-        #Atom .q_20w1zq {
-        background: url(${ICON_IMAGE_LINK}) 0 -860px no-repeat !important
-        }
-
-        #Atom .q4_16fT2O:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -920px no-repeat !important
-        }
-
-        #Atom .q_Z2tNYW3 {
-        background: url(${ICON_IMAGE_LINK}) 0 -980px no-repeat !important
-        }
-
-        #Atom .q4_Z1MF8Qh:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -1020px no-repeat !important
-        }
-
-        #Atom .q_SsICp {
-        background: url(${ICON_IMAGE_LINK}) 0 -1060px no-repeat !important
-        }
-
-        #Atom .q_ZADvbE {
-        background: url(${ICON_IMAGE_LINK}) 0 -1000px no-repeat !important
-        }
-
-        #Atom .q4_25umi2:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -1040px no-repeat !important
-        }
-
-        #Atom .q_ZixT2d {
-        background: url(${ICON_IMAGE_LINK}) 0 -1080px no-repeat !important
-        }
-
-        #Atom .q_ONM0v {
-        background: url(${ICON_IMAGE_LINK}) 0 -620px no-repeat !important
-        }
-
-        #Atom .q4_Z1yetjJ:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -660px no-repeat !important
-        }
-
-        #Atom .q_ZmcPE7 {
-        background: url(${ICON_IMAGE_LINK}) 0 -640px no-repeat !important
-        }
-
-        #Atom .q4_2jV1Oz:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -680px no-repeat !important
-        }
-
-        #Atom .q4_21PpF8:hover,#Atom .q_21PpF8 {
-        background: url(${ICON_IMAGE_LINK}) 0 -600px no-repeat !important
-        }
-
-        #Atom .q4_Z1eOt4A:hover,#Atom .q_Z1eOt4A {
-        background: url(${ICON_IMAGE_LINK}) 0 -480px no-repeat !important
-        }
-
-        #Atom .q_ZW3WVz {
-        background: url(${ICON_IMAGE_LINK}) 0 -520px no-repeat !important
-        }
-
-        #Atom .q_Z1wU5e2 {
-        background: url(${ICON_IMAGE_LINK}) 0 -400px no-repeat !important
-        }
-
-        #Atom .q4_x3gRu:hover,#Atom .q_x3gRu {
-        background: url(${ICON_IMAGE_LINK}) 0 -580px no-repeat !important
-        }
-
-        #Atom .q4_Z2MPoX:hover,#Atom .q_Z2MPoX {
-        background: url(${ICON_IMAGE_LINK}) 0 -460px no-repeat !important
-        }
-
-        #Atom .q_eWEI3 {
-        background: url(${ICON_IMAGE_LINK}) 0 -500px no-repeat !important
-        }
-
-        #Atom .q_ymEXc {
-        background: url(${ICON_IMAGE_LINK}) 0 -320px no-repeat !important
-        }
-
-        #Atom .q4_Z1OFAm3:hover {
-        background: url(${ICON_IMAGE_LINK}) 0 -360px no-repeat !important
-        }
-
-        #Atom .q_Z1cO1yO {
-        background: url(${ICON_IMAGE_LINK}) 0 -1140px no-repeat !important
-        }
-
-        #Atom .q_z3Ing {
-        background: url(${ICON_IMAGE_LINK}) 0 -1240px no-repeat !important
-        }
-
-        #Atom .q_ZBWThm {
-        background: url(${ICON_IMAGE_LINK}) 0 -1260px no-repeat !important
-        }
-
-        #Atom .q_1tjPTR {
-        background: url(${ICON_IMAGE_LINK}) 0 -1180px no-repeat !important
-        }
-        `;
-
     document.head.append(style);
-
-    // left side bar
-    // const leftBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.x_Z14vXdP.W_3rdfm");
-    // leftBarParent.classList.add("sidebar-theme");
-
-    const defaultFoldersChildren = Array.from(document.querySelector("ul[data-test-id=system-folder-list]").children);
-    const customFoldersChildren = Array.from(document.querySelector("ul[data-test-id=custom-folder-list]").children);
-
-    defaultFoldersChildren.forEach((elem) => {
-        elem.classList.add("sidebar-theme");
-    });
-    customFoldersChildren.forEach((elem) => {
-        elem.classList.add("sidebar-theme");
-    });
-
-    // right side bar
-    // const rightBarParent = document.querySelector(".V_GM.I_Z1sX2Gk.n_Z14vXdP");
-    // if (rightBarParent) {
-    //     rightBarParent.classList.add("sidebar-theme");
-    // } else {
-    //     clog("no right bar parent found");
-    // }
-
-    // main center view
-    const centerTopView = document.querySelectorAll("tr.W_6D6F")[10];
-    if (centerTopView) {
-        centerTopView.classList.add("center-view-theme");
-    } else {
-        clog("no center top view found");
-    }
-
-    if (page === Page.ALL_EMAILS) { // in email content screen, let it be all white (normal) to ensure all content visible
-        const centerMainView = document.querySelectorAll(".W_6D6F.H_6D6F.p_R.bo_BA.ku_f")[2];
-        centerMainView.classList.add("center-view-theme");
-    }
-
+    
     replaceDarkCheckboxes();
 }
 
@@ -689,7 +623,7 @@ function enlargeCheckboxes() {
 }
 
 function applyBetterEmailHeaderSpacing() {
-    const h2 = document.querySelector(".A_6FsP.a_eBt.D_X.mq_AQ");
+    const h2 = document.querySelector(".A_6FsP.a_eBt.D_X.mq_AQ")
     h2.style = "max-height: 80%;"; // better, at least while maximized lol
 }
 
@@ -724,6 +658,7 @@ function deleteBottomControlBar() {
 
     if (div) {
         div.remove();
+        clog("control bar removed");
     } else {
         clog("no control bar to remove");
     }
@@ -751,14 +686,6 @@ function isOnEmailContentPage() {
     return false;
 }
 
-function isOnSettingsPage() {
-    const url = location.href;
-    if (url.indexOf("/settings/") !== -1) {
-        return true;
-    }
-    return false;
-}
-
 function makeEmailContentScrollable(offset) { // +1 offset for when in emailcontent page
     const div = document.createElement("div");
     div.style = `overflow-y: auto; max-height: ${maxHeightVH + offset}vh`;
@@ -772,6 +699,7 @@ function makeEmailContentScrollable(offset) { // +1 offset for when in emailcont
     contentTD.append(div);
 }
 
+// area with all emails in home page / email inbox section
 function makeEmailsSectionScrollable() {
     const mailListDiv = document.querySelector(".P_5xpcy");
     mailListDiv.style = `overflow-y: auto; max-height: ${maxHeightVH}vh;`;
@@ -935,45 +863,49 @@ function alert(message) {
 async function backToOldUI() {
     // from new UI > basic UI > /d/ settings link > back to inbox
     if (location.href.startsWith("https://mail.yahoo.com/n/")) { // from new UI to basic UI
-        const optoutBaseLink = "https://mail.yahoo.com/d/optout?crumb=";
-        const crumb = getCrumb();
-        const optoutLink = optoutBaseLink + crumb;
-        window.location.replace(optoutLink);
+        goToBasicUIFromNewUI();
     } else if (location.href.startsWith("https://mail.yahoo.com/b/")) { // from basic to /d/
         window.location.replace("https://mail.yahoo.com/d/settings/1");
     } else if (location.href.startsWith("https://mail.yahoo.com/d/settings/")) { // from /d/ settings to press back
         const backButton = await waitForElement(".P_2jztU.D_F.F_n");
         backButton.click();
     }
+}
 
-    /** 
-     * where crumb is given as: \"crumb\":\"sAOaMa3ktnl\"
-     * in a script[nonce] element
-    */
-    function getCrumb() {
-        const allScriptNonceElems = Array.from(document.querySelectorAll("script[nonce]"));
-        const stringToLook = '"crumb":"';
-        let indexStart;
-        let text;
-        const scriptNonce = allScriptNonceElems.find((elem) => {
-            text = elem.textContent;
-            indexStart = text.indexOf(stringToLook);
-            
-            if (indexStart != -1) {
-                return true;
-            }
-        });
+function goToBasicUIFromNewUI() {
+    const optoutBaseLink = "https://mail.yahoo.com/d/optout?crumb=";
+    const crumb = getCrumb();
+    const optoutLink = optoutBaseLink + crumb;
+    window.location.replace(optoutLink);
+}
 
-        if (scriptNonce == undefined) {
-            throw new Error("couldnt find crumb");
+/** 
+ * where crumb is given as: \"crumb\":\"<CRUMBVALUE>\"
+ * in a script[nonce] element
+*/
+function getCrumb() {
+    const allScriptNonceElems = Array.from(document.querySelectorAll("script[nonce]"));
+    const stringToLook = '"crumb":"';
+    let indexStart;
+    let text;
+    const scriptNonce = allScriptNonceElems.find((elem) => {
+        text = elem.textContent;
+        indexStart = text.indexOf(stringToLook);
+        
+        if (indexStart != -1) {
+            return true;
         }
+    });
 
-        indexStart = indexStart + stringToLook.length; // ignore "crumb":"
-        const indexEnd = text.indexOf("\"", indexStart + stringToLook.length);
-        const crumb = text.substring(indexStart, indexEnd);
-
-        return crumb;
+    if (scriptNonce == undefined) {
+        throw new Error("couldnt find crumb");
     }
+
+    indexStart = indexStart + stringToLook.length; // ignore "crumb":"
+    const indexEnd = text.indexOf("\"", indexStart + stringToLook.length);
+    const crumb = text.substring(indexStart, indexEnd);
+
+    return crumb;
 }
 
 /*
@@ -1013,7 +945,7 @@ async function stuffidk() {
         chrome.storage.sync.set({"sortByUnreadAlways": false}); // off by def
     } else if (response.sortByUnreadAlways) {
         window.addEventListener("locationchange", onLocationChange);
-        setsortByUnreadAlways(); // on initial load
+        setSortUnreadOldUI(); // on initial load
     }
 
     setListeners();
@@ -1039,7 +971,7 @@ function onLocationChange() {
         if (after.includes("/")) { // mailbox page shouldnt have / after root
             return;
         }
-        setsortByUnreadAlways();
+        setSortUnreadOldUI();
     }
 }
 
@@ -1074,56 +1006,11 @@ function setListeners() {
         } else if (message.task === "sortByUnreadAlways") {
             if (message.sortByUnreadAlways) { // turned on
                 window.addEventListener("locationchange", onLocationChange);
-                setsortByUnreadAlways(); // set now
+                setSortUnreadOldUI(); // set now
             } else {
                 window.removeEventListener("locationchange", onLocationChange);
             }
         }
     });
-}
-
-async function setsortByUnreadAlways() {
-    // click unread button after sortby is clicked (observer to wait for button to open)
-    // start observing before clicking sortby
-    clog("setting sort by unread...");
-    const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
-    let sortByButton = document.querySelector(sortByButtonQuery);
-    if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email
-        clog("got sortByButton", sortByButton);
-        sortByButton.click();
-
-        clickUnread();
-    } else {
-        clog("waiting for sortByButton");
-        sortByButton = await waitForElement(sortByButtonQuery, 400);
-        if (!sortByButton) {
-            clog("sortByButton: timed out");
-            setsortByUnreadAlways();
-            return;
-        }
-        clog("got sortByButton");
-        sortByButton.click();
-        clickUnread();
-    }
-
-    async function clickUnread() {
-        const unreadButtonQuery = "button[data-test-id='sort-by-unread']";
-        let unreadButton = document.querySelector(unreadButtonQuery);
-
-        if (unreadButton) {
-            unreadButton.click();
-        } else {
-            clog("waiting for unreadButton");
-            unreadButton = await waitForElement(unreadButtonQuery, 400);
-            if (!unreadButton) {
-                clog("unreadButton: timed out");
-                setsortByUnreadAlways();
-                return;
-            }
-            clog("got unreadButton");
-            unreadButton.click();
-        }
-        clog("set by unread successfully");
-    }
 }
 */
