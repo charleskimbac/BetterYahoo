@@ -11,6 +11,9 @@ Go back to the old Yahoo UI or customize your Basic UI experience.
 ## Something not working?
 Please open a new [issue](https://github.com/charleskimbac/BetterYahoo/issues)! Please be as specific as possible, including exact steps taken or pictures for clarity.
 
+## What are all the different UIs?
+[Basic UI](https://imgur.com/f1BTkSb) | [New UI](https://imgur.com/UggQc0l) | [Old UI](https://imgur.com/pVdHq5h)
+
 ## Building
 `npm run build`
 
