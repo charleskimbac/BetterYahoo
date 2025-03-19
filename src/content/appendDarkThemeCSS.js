@@ -5,8 +5,10 @@ main();
 async function main() {
   const response = await chrome.storage.sync.get();
   const useDarkTheme = response && response.useDarkTheme;
+  const backToOldUI = response && response.backToOldUI;
 
-  if (!useDarkTheme) {
+  // disable for settings page (text is unreadable)
+  if (!useDarkTheme || backToOldUI || location.href.includes("https://mail.yahoo.com/b/settings/")) {
     clog("dark theme not applied");
     return;
   }
@@ -21,5 +23,5 @@ function appendDarkTheme() {
   link.href = css;
   link.rel = "stylesheet";
   link.type = "text/css";
-  document.head.append(link);
+  document.documentElement.append(link);
 }
