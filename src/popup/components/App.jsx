@@ -93,7 +93,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, displayContent })
       </div>
 
       <div id="button-div">
-        <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save</button>
+        <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save settings</button>
         <p id="save-message" className="text-green-700 hidden mt-10">Saved! Reload the page.</p>
       </div>
     </div>
