@@ -100,7 +100,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
 
       <div id="button-div">
         <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save settings</button>
-        <p id="save-message" className="text-green-700 hidden mt-10">Saved! Reload the page.</p>
+        <p id="save-message" className="text-green-700 hidden mt-10 text-sm">Saved! Reload the page.</p>
       </div>
 
     <div class="fixed w-[100%] bottom-0 left-0 bg-gray-100">
