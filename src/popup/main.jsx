@@ -5,9 +5,7 @@ import App from './components/App.jsx'
 
 main();
 async function main() {
-  // PRESETS START HERE
-
-  const OLD_UI_SETTINGS = ["backToOldUI", "sortByUnreadAlwaysOldUI"];
+  const OLD_UI_SETTINGS = ["backToOldUI", "sortByUnreadAlwaysOldUI", "removeComingSoonBar", "oldHideAds"];
   const BASIC_UI_SETTINGS = ["sortByUnreadAlways", "hideAds", "enlargeCheckboxes", "addEmailDayLabels", "useDarkTheme", "autoConfirmSelections"];
   const MINOR_BASIC_UI_SETTINGS = ["deleteBottomControlBar", "makeEmailContentScrollable", "makeMailboxSectionScrollable", "applyBetterEmailHeaderSpacing", "makeEmailsSectionScrollable", "enlargeCheckboxes", "showFullNewMailCircleIndicator"];
 
@@ -25,7 +23,9 @@ async function main() {
     useDarkTheme: "Use dark theme",
     showFullNewMailCircleIndicator: "Show full new mail circle indicator",
     autoConfirmSelections: "Auto confirm selections",
-    sortByUnreadAlwaysOldUI: "Always sort mail by unread"
+    sortByUnreadAlwaysOldUI: "Always sort mail by unread",
+    removeComingSoonBar: "Remove the \"Coming Soon...\" bar",
+    oldHideAds: "Hide ads"
   };
 
   const SETTING_TO_MODAL_TEXT = {
@@ -41,41 +41,41 @@ async function main() {
     backToOldUI: "Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on.",
     // useDarkTheme: "Use dark theme",
     // showFullNewMailCircleIndicator: "Show full new mail circle indicator",
-    autoConfirmSelections: "Auto apply and submit your selection for the \"Actions\", \"Account Info\", and \"Sort By\" buttons."
+    autoConfirmSelections: "Auto apply and submit your selection for the \"Actions\", \"Account Info\", and \"Sort By\" buttons.",
+    removeComingSoonBar: "Remove the Yahoo ad at the top of the page promoting a garbage new UI.",
   };
 
-  // PRESETS END HERE
+  const DEFAULT_SETTINGS = {
+    sortByUnreadAlways: false,
+    hideAds: true,
+    deleteBottomControlBar: true,
+    makeEmailContentScrollable: true,
+    makeMailboxSectionScrollable: true,
+    applyBetterEmailHeaderSpacing: true,
+    makeEmailsSectionScrollable: true,
+    enlargeCheckboxes: true,
+    addEmailDayLabels: true,
+    backToOldUI: false,
+    useDarkTheme: false,
+    showFullNewMailCircleIndicator: true,
+    autoConfirmSelections: true,
+    sortByUnreadAlwaysOldUI: false,
+    removeComingSoonBar: false,
+    oldHideAds: false
+};
 
-/* uncomment/comment the below 2 sections to use `run dev` vs prod */
-/* force user settings (dev) */
-  // const userSettings = {
-  //   sortByUnreadAlwaysOldUI: false,
-  //   sortByUnreadAlways: false,
-  //   hideAds: true,
-  //   deleteBottomControlBar: true,
-  //   makeEmailContentScrollable: true,
-  //   makeMailboxSectionScrollable: true,
-  //   applyBetterEmailHeaderSpacing: true,
-  //   makeEmailsSectionScrollable: true,
-  //   enlargeCheckboxes: true,
-  //   addEmailDayLabels: true,
-  //   backToOldUI: false,
-  //   useDarkTheme: false,
-  //   showFullNewMailCircleIndicator: true,
-  //   autoConfirmSelections: true
-  // };
-  // let displayContent = true;
-  // clog("RESETTING USER SETTINGS");
+  // get user settings
+  let userSettings = await chrome.storage.sync.get();
 
-/* get user settings (prod) */
-  const userSettings = await chrome.storage.sync.get();
-  let displayContent
+  let showInitializedModal = false;
   if (Object.keys(userSettings).length === 0) {
-    displayContent = false;
-  } else {
-    displayContent = true;
+    chrome.storage.sync.set(DEFAULT_SETTINGS);
+    userSettings = DEFAULT_SETTINGS;
+    showInitializedModal = true;
+    clog(userSettings)
   }
-/*  */
+
+  // btw we add new settings in content.js instead of here (to notify users too)
 
   const userOldUISettings = [];
   const userBasicUISettings = [];
@@ -106,7 +106,7 @@ async function main() {
 
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} displayContent={displayContent}/>
+      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} showInitializedModal={showInitializedModal}/>
     </StrictMode>
   );
 }

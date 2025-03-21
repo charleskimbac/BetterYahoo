@@ -1,8 +1,9 @@
 import { forwardRef } from "react";
 
 /** 
- * closeTypes: [ onOutsideClick, onBRButton, onTRButton ]  
- * BR = bottom right, TR = top right
+ * props: closeTypes, BRButtonText, modalText, modalTitle  
+ * closeTypes: [ onOutsideClick, onBRButton, onTRButton ]; BR = bottom right, TR = top right  
+ * BRButtonText default: "Continue"
  */
 const Modal = forwardRef(function Modal({ closeTypes, BRButtonText, modalText, modalTitle }, ref) {
   return (
@@ -20,7 +21,7 @@ const Modal = forwardRef(function Modal({ closeTypes, BRButtonText, modalText, m
         { closeTypes.includes("onBRButton") &&
           <div className="modal-action">
             <form method="dialog">
-              <button className="btn btn-sm">{BRButtonText || "Close"}</button>
+              <button className="btn btn-sm">{BRButtonText || "Continue"}</button>
             </form>
           </div>
         }

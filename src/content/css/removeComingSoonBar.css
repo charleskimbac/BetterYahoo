@@ -1,0 +1,9 @@
+/* hide bar */
+#ybar-oasis-awareness-upsell {
+    display: none !important;
+}
+
+/* remove space that was given to the bar */
+.H_3nFkV {
+    height: 110px !important;
+}

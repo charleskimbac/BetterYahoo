@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "BetterYahoo",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "description": "Go back to the old Yahoo UI or customize your Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
@@ -13,7 +13,7 @@
         },
         {
             "matches": ["*://mail.yahoo.com/*"],
-            "js": ["src/content/appendDarkThemeCSS.js"],
+            "js": ["src/content/appendCSS.js"],
             "run_at": "document_start"
         },
         {
@@ -31,11 +31,11 @@
     },
     "web_accessible_resources": [
         {
-            "resources": ["images/darkThemeIcons.png", "images/downTriangleArrow.svg"],
+            "resources": ["images/darkThemeIcons.png"],
             "matches": ["<all_urls>"]
         },
         {
-            "resources": ["src/content/darkTheme.css"],
+            "resources": ["src/content/css/*"],
             "matches": ["<all_urls>"]
         }
     ],

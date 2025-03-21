@@ -4,10 +4,11 @@ import Modal from './Modal.jsx';
 import SettingRow from './SettingRow.jsx';
 import clog from '../../globals/clog.js';
 
-function App({ oldSettings, basicSettings, minorBasicSettings, displayContent }) {
+function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal }) {
   const [basicUISectionClass, setBasicUISectionClass] = useState("");
 
   const backToOldUIConfirmModal = useRef(null);
+  const initializedModal = useRef(null);
 
   const basicUISectionClassIfEnabled = "pointer-events-none text-[rgba(0,0,0,.2)]";
   let setOldUIEnabled = useCallback((enabled) => {
@@ -19,11 +20,18 @@ function App({ oldSettings, basicSettings, minorBasicSettings, displayContent })
       backToOldUIConfirmModal.current.showModal();
   }, []);
 
+  // hide basic ui settings if old ui enabled
   useEffect(() => {
     if (oldSettings[0] && oldSettings[0].enabled === true) { // oldSettings[0] = backToOldUI settingObj
       setBasicUISectionClass(basicUISectionClassIfEnabled);
     }
   }, [oldSettings]);
+
+  useEffect(() => {
+    if (showInitializedModal) {
+      initializedModal.current.showModal();
+    }
+  }, [showInitializedModal]);
 
    // ill fix this func one day
   const saveSettings = useCallback(() => {
@@ -45,9 +53,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, displayContent })
   return (
     <>
       <h1 className="mb-5 text-center text-xl font-bold mt-[-6px]">BetterYahoo</h1>
-      <h2 className="text-sm" id="initialWarning" style={{display: displayContent ? "none" : "block"}}>Please open a Yahoo Mail page first.</h2>
 
-    <div id="content" style={{display: displayContent ? "block" : "none"}}>
       <hr></hr>
 
       <div className="section">
@@ -96,13 +102,15 @@ function App({ oldSettings, basicSettings, minorBasicSettings, displayContent })
         <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save settings</button>
         <p id="save-message" className="text-green-700 hidden mt-10">Saved! Reload the page.</p>
       </div>
-    </div>
 
     <div class="fixed w-[100%] bottom-0 left-0 bg-gray-100">
       <p><a color="blue" href="https://github.com/charleskimbac/BetterYahoo" target="_blank">BetterYahoo</a> by charleskimbac. <a href="https://ko-fi.com/charleskimbac" target="_blank">Support me!</a></p>
     </div>
 
-    <Modal ref={backToOldUIConfirmModal} closeTypes="onBRButton" BRButtonText="Continue" modalTitle="Go back to the old UI" modalText={"Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on."} />
+    <Modal ref={backToOldUIConfirmModal} closeTypes="onBRButton" modalTitle="Go back to the old UI" modalText={"Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on."} />
+
+
+    <Modal ref={initializedModal} closeTypes="onBRButton" modalTitle="BetterYahoo has been initialized!" modalText={"You can go back to your Yahoo Mail tab.\nIf you want to go back to the old UI, enable the setting (after clicking Continue) and save."}/>
 
     <br></br>
     <script type="module" src="enableModals.js"></script>

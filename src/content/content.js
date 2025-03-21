@@ -31,44 +31,41 @@ let settings; // current user settings
 let currentUI;
 let maxHeightVH = 77; // this is changed if we remove bottom control bar
 
-const defaultSettings = {
-    sortByUnreadAlwaysOldUI: false,
-    sortByUnreadAlways: false,
-    hideAds: true,
-    deleteBottomControlBar: true,
-    makeEmailContentScrollable: true,
-    makeMailboxSectionScrollable: true,
-    applyBetterEmailHeaderSpacing: true,
-    makeEmailsSectionScrollable: true,
-    enlargeCheckboxes: true,
-    addEmailDayLabels: true,
-    backToOldUI: false,
-    useDarkTheme: false,
-    showFullNewMailCircleIndicator: true,
-    autoConfirmSelections: true
-};
-
 main();
 async function main() {
-    // const onNewUI = isOnNewUI();
-    // if (onNewUI) {
-    //     window.alert("Reorder Yahoo Mailboxes will not work if you are using the new Yahoo Mail. Please go back to the old Yahoo Mail by pressing the button at the top right of the page.");
-    //     return;
-    // }
-
-    await getSettings();
     checkCurrentUI();
+
+    settings = await chrome.storage.sync.get();
+        
+    if (!settings || Object.keys(settings).length === 0) {
+        window.alert(`
+            Thanks for installing BetterYahoo!\n
+            Since it's your first time, you must first visit the extension's settings page in order for BetterYahoo to initialize and start working.\n
+            Click on the extension icon (puzzle piece) at the top right of your browser and then click on BetterYahoo.
+        `);
+        return;
+    }
+    clog("settings", settings);
 
     // add new settings
     const newSettings = [
-        "sortByUnreadAlwaysOldUI"
+        "sortByUnreadAlwaysOldUI",
+        "removeComingSoonBar",
+        "oldHideAds"
     ];
+
+    let showUpdateAlert = false;
     newSettings.forEach(setting => {
-        if (!settings[setting]) {
+        if (settings[setting] == undefined) {
             settings[setting] = false;
             chrome.storage.sync.set({[setting]: false });
+            showUpdateAlert = true;
+            clog("new setting added", setting);
         }
     });
+    if (showUpdateAlert) {
+        window.alert("Sorry to intrude.\nBetterYahoo has updated and now has more settings!\nVisit the settings page to see them.");
+    }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways()
     if (currentUI === UI.BASIC) {
@@ -524,18 +521,6 @@ function useDarkTheme() {
     replaceDarkCheckboxes();
 }
 
-async function getSettings() {
-    settings = await chrome.storage.sync.get();
-    
-    if (!settings || Object.keys(settings).length === 0) {
-        settings = defaultSettings;
-        chrome.storage.sync.set(settings);
-        clog("settings not found, set to default");
-    }
-
-    clog("settings", settings);
-}
-
 // check if sorted alr, we dont use and check location.href for "sortOrder=unread" since
 // we could be sorted without that in the url
 // should be same as first few lines of sortByUnreadAlways()
@@ -854,10 +839,6 @@ function addEmailDayLabels() {
 
         clog("label added", label);
     }
-}
-
-function alert(message) {
-    window.alert(message);
 }
 
 async function backToOldUI() {
