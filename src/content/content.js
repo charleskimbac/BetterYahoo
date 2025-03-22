@@ -39,7 +39,7 @@ async function main() {
         
     if (!settings || Object.keys(settings).length === 0) {
         window.alert(`
-            Thanks for installing BetterYahoo!\n
+            Thanks for installing the BetterYahoo extension!\n
             Since it's your first time, you must first visit the extension's settings page in order for BetterYahoo to initialize and start working.\n
             Click on the extension icon (puzzle piece) at the top right of your browser and then click on BetterYahoo.
         `);
@@ -64,7 +64,7 @@ async function main() {
         }
     });
     if (showUpdateAlert) {
-        window.alert("Sorry to intrude.\nBetterYahoo has updated and now has more settings!\nVisit the settings page to see them.");
+        window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the BetterYahoo settings page to see them.");
     }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways()
