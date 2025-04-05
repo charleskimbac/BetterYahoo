@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "BetterYahoo",
-    "version": "2.2.2",
+    "version": "2.2.3",
     "description": "Go back to the old Yahoo UI or customize your Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],

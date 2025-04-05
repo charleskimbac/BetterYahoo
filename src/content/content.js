@@ -67,7 +67,7 @@ async function main() {
         window.alert("Sorry to intrude.\nBetterYahoo has updated and now has more settings!\nVisit the settings page to see them.");
     }
 
-    // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways()
+    // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
     if (currentUI === UI.BASIC) {
         if (isOnEmailContentPage()) {
             if (settings.backToOldUI)
@@ -102,7 +102,7 @@ async function main() {
 
         } else if (isOnAllEmailsPage()) { // must be checked last
             if (settings.sortByUnreadAlways)
-                sortByUnreadAlways();
+                sortByUnreadAlwaysBasic();
 
             if (settings.deleteBottomControlBar)
                 deleteBottomControlBar();
@@ -134,8 +134,8 @@ async function main() {
         }
     } else if (currentUI === UI.OLD) {
         if (settings.sortByUnreadAlwaysOldUI) {
-            window.addEventListener("locationchange", () => setSortUnreadOldUI(5));
-            setSortUnreadOldUI(5);
+            window.addEventListener("locationchange", () => setSortUnreadOldUI(3));
+            setSortUnreadOldUI(3);
         }
     }
 
@@ -163,10 +163,21 @@ function searchFromAllMailboxes() {
 }
 */
 
-// times to retry is for when we're in a page that doesn't have sortby button at all
+// times to retry is bc sometimes we get an old? sortByButton or unreadButton when initially loading page, no clue why
 async function setSortUnreadOldUI(timesToRetry) {
+    const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
     if (timesToRetry === 0) {
         clog("setSortUnreadOldUI: max retries reached");
+
+        // click again to close dialog
+        let sortByButton = document.querySelector(sortByButtonQuery);
+        if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email
+            clog("got sortByButton");
+            sortByButton.click();
+        }
+        return;
+    } else if (location.href.startsWith("https://mail.yahoo.com/d/search/")) {
+        clog("not sorting by unread (in search page)");
         return;
     }
     clog("setSortUnreadOldUI, times to retry", timesToRetry);
@@ -174,10 +185,9 @@ async function setSortUnreadOldUI(timesToRetry) {
     // click unread button after sortby is clicked (observer to wait for button to open)
     // start observing before clicking sortby
     clog("setting sort by unread...");
-    const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
     let sortByButton = document.querySelector(sortByButtonQuery);
     if (sortByButton) { // if already loaded, sometimes not loaded if just exiting an email
-        clog("got sortByButton", sortByButton);
+        clog("closing sortByButton");
         sortByButton.click();
 
         clickUnread();
@@ -202,7 +212,7 @@ async function setSortUnreadOldUI(timesToRetry) {
             unreadButton.click();
         } else {
             clog("waiting for unreadButton");
-            unreadButton = await waitForElement(unreadButtonQuery, 400);
+            unreadButton = await waitForElement(unreadButtonQuery, 10); // low time so that when we're on a page wo unreadButton it only flickers "once" with all tries
             if (!unreadButton) {
                 clog("unreadButton: timed out");
                 setSortUnreadOldUI(--timesToRetry);
@@ -523,7 +533,7 @@ function useDarkTheme() {
 
 // check if sorted alr, we dont use and check location.href for "sortOrder=unread" since
 // we could be sorted without that in the url
-// should be same as first few lines of sortByUnreadAlways()
+// should be same as first few lines of sortByUnreadAlwaysBasic()
 function isSortedByUnread() {
     const select = document.querySelector("select[name='sort_option[top]'");
 
@@ -552,7 +562,7 @@ function isSortedByUnread() {
     }
 }
 
-function sortByUnreadAlways() {
+function sortByUnreadAlwaysBasic() {
     updateMailboxLinksToUnread();
 
     // these first few lines should be same as isSortedByUnread() but lol

@@ -7,3 +7,8 @@
 .D_F.em_N.ek_BB.iz_A.iy_h.a_3vpWV.H_6D6F {
     display: none !important;
 }
+
+/* ad whenever in empty folder eg starred */
+iframe[name="gpt-iframe"] {
+    display: none !important;
+}
