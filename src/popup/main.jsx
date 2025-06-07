@@ -5,7 +5,8 @@ import App from './components/App.jsx'
 
 main();
 async function main() {
-  const OLD_UI_SETTINGS = ["backToOldUI", "sortByUnreadAlwaysOldUI", "removeComingSoonBar", "oldHideAds"];
+  // btw we actually "add" new settings in content.js instead of here (to notify users too)
+  const OLD_UI_SETTINGS = ["backToOldUI", "sortByUnreadAlwaysOldUI", "removeComingSoonBar", "oldHideAds", "sortByNewAlwaysNonInbox"];
   const BASIC_UI_SETTINGS = ["sortByUnreadAlways", "hideAds", "enlargeCheckboxes", "addEmailDayLabels", "useDarkTheme", "autoConfirmSelections"];
   const MINOR_BASIC_UI_SETTINGS = ["deleteBottomControlBar", "makeEmailContentScrollable", "makeMailboxSectionScrollable", "applyBetterEmailHeaderSpacing", "makeEmailsSectionScrollable", "enlargeCheckboxes", "showFullNewMailCircleIndicator"];
 
@@ -25,24 +26,19 @@ async function main() {
     autoConfirmSelections: "Auto confirm selections",
     sortByUnreadAlwaysOldUI: "Always sort mail by unread",
     removeComingSoonBar: "Remove the \"Coming Soon...\" bar",
-    oldHideAds: "Hide ads"
+    oldHideAds: "Hide ads",
+    sortByNewAlwaysNonInbox: "Always sort mail by new, except Inbox"
   };
 
   const SETTING_TO_MODAL_TEXT = {
-    // sortByUnreadAlways: "Sort mail by unread",
-    // hideAds: "Hide ads",
     deleteBottomControlBar: 'Remove the toolbar at the bottom of the page since it is already at the top.',
-    // makeEmailContentScrollable: "Make email content scrollable",
-    // makeMailboxSectionScrollable: "Make mailbox section scrollable",
-    // applyBetterEmailHeaderSpacing: "Apply better email header spacing",
-    // makeEmailsSectionScrollable: "Make emails section scrollable",
     enlargeCheckboxes: "Makes selecting individual emails easier.",
     addEmailDayLabels: "Bring back the \"Today\", \"Yesterday\", \"Last Week\", and day labels in your inbox.\nThis feature will not work if the \"Always sort mail by unread\" setting is also enabled.",
     backToOldUI: "Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on.",
-    // useDarkTheme: "Use dark theme",
-    // showFullNewMailCircleIndicator: "Show full new mail circle indicator",
     autoConfirmSelections: "Auto apply and submit your selection for the \"Actions\", \"Account Info\", and \"Sort By\" buttons.",
     removeComingSoonBar: "Remove the Yahoo ad at the top of the page promoting a garbage new UI.",
+    sortByNewAlwaysNonInbox: "Always sort mail by new when in folders like Drafts, Sent, Spam, and Trash.",
+    sortByUnreadAlwaysOldUI: "Always sort mail by unread. To only sort mail by unread while in Inbox, turn on the \"Always sort mail by new, except Inbox\" setting."
   };
 
   const DEFAULT_SETTINGS = {
@@ -61,7 +57,8 @@ async function main() {
     autoConfirmSelections: true,
     sortByUnreadAlwaysOldUI: false,
     removeComingSoonBar: false,
-    oldHideAds: false
+    oldHideAds: false,
+    sortByNewAlwaysNonInbox: false
 };
 
   // get user settings
@@ -74,8 +71,6 @@ async function main() {
     showInitializedModal = true;
     clog(userSettings)
   }
-
-  // btw we add new settings in content.js instead of here (to notify users too)
 
   const userOldUISettings = [];
   const userBasicUISettings = [];

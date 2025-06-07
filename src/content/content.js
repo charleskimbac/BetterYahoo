@@ -51,24 +51,33 @@ async function main() {
     const newSettings = [
         "sortByUnreadAlwaysOldUI",
         "removeComingSoonBar",
-        "oldHideAds"
+        "oldHideAds",
+        "sortByNewAlwaysNonInbox"
     ];
 
-    let showUpdateAlert = false;
+    // let showUpdateAlert = false; see comment below
     newSettings.forEach(setting => {
         if (settings[setting] == undefined) {
             settings[setting] = false;
             chrome.storage.sync.set({[setting]: false });
-            showUpdateAlert = true;
+            // showUpdateAlert = true;
             clog("new setting added", setting);
         }
     });
-    if (showUpdateAlert) {
-        window.alert("Sorry to intrude.\nBetterYahoo has updated and now has more settings!\nVisit the settings page to see them.");
-    }
+    // ig i will disable this since old ui is back and i still want users haha
+    // if (showUpdateAlert) {
+    //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
+    // }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
     if (currentUI === UI.BASIC) {
+        if (location.href.startsWith("https://mail.yahoo.com/b/compose?")) {
+            makeMailboxSectionScrollable();
+            if (settings.deleteBottomControlBar) {
+                deleteBottomControlBar();
+            }
+        }
+
         if (isOnEmailContentPage()) {
             if (settings.backToOldUI)
                 backToOldUI();
@@ -133,20 +142,28 @@ async function main() {
                 autoConfirmSelections();
         }
     } else if (currentUI === UI.OLD) {
-        if (settings.sortByUnreadAlwaysOldUI) {
-            window.addEventListener("locationchange", () => setSortUnreadOldUI(3));
-            setSortUnreadOldUI(3);
+        if (settings.sortByUnreadAlwaysOldUI || settings.sortByNewAlwaysNonInbox) {
+            window.addEventListener("locationchange", doAllSortsOldUI);
+            doAllSortsOldUI();
         }
-    }
-
-    if (location.href.startsWith("https://mail.yahoo.com/b/compose?")) {
-        makeMailboxSectionScrollable();
-        if (settings.deleteBottomControlBar)
-            deleteBottomControlBar();
     }
 
     if (settings.backToOldUI || (settings.backToOldUI && location.href.startsWith("https://mail.yahoo.com/d/settings/"))) {
         backToOldUI();
+    }
+}
+
+function doAllSortsOldUI() {
+    const allInboxFolderNumbers = getAllInboxFolderNumbers();
+    if (!location.href.startsWith("https://mail.yahoo.com/d/folders/")) {
+        return;
+    }
+
+    const currentFolderNumber = parseInboxFolderNumber(location.href);
+    if (settings.sortByUnreadAlwaysOldUI && allInboxFolderNumbers.includes(currentFolderNumber)) {
+        setSortOldUI("button[data-test-id='sort-by-unread']", 3);
+    } else if (settings.sortByNewAlwaysNonInbox && !allInboxFolderNumbers.includes(currentFolderNumber)) {
+        setSortOldUI("button[data-test-id='sort-by-date_desc']", 3);
     }
 }
 
@@ -163,8 +180,47 @@ function searchFromAllMailboxes() {
 }
 */
 
+function getAllInboxFolderNumbers() {
+    const inboxFolderNumbers = [];
+
+    const accountListElement = document.querySelector("div[data-test-id=account-list]");
+    if (accountListElement) { // user has multiple inboxes
+        const accountsUL = accountListElement.children[0];
+        for (const accountLI of accountsUL.children) {
+            const a = accountLI.children[0];
+            
+            inboxFolderNumbers.push(parseInboxFolderNumber(a.href));
+        }
+    } else {
+        const a = document.querySelector("a[data-test-folder-name=Inbox]");
+
+        inboxFolderNumbers.push(parseInboxFolderNumber(a.href));
+    }
+
+    return inboxFolderNumbers;
+}
+
+// href must start with https://mail.yahoo.com/d/folders/
+// href is formatted "https://mail.yahoo.com/d/folders/folders=1&sortOrder=unread" or "https://mail.yahoo.com/d/folders/1
+function parseInboxFolderNumber(href) {
+    if (!href.startsWith("https://mail.yahoo.com/d/folders/")) {
+        throw new Error("href must start with https://mail.yahoo.com/d/folders/");
+    }
+
+    const lastSection = href.split("/").at(-1);
+
+    let inboxFolderNumber;
+    if (lastSection.includes("&")) {
+        inboxFolderNumber = lastSection.split("&")[0].split("=")[1];
+    } else {
+        inboxFolderNumber = lastSection;
+    }
+
+    return inboxFolderNumber;
+}
+
 // times to retry is bc sometimes we get an old? sortByButton or unreadButton when initially loading page, no clue why
-async function setSortUnreadOldUI(timesToRetry) {
+async function setSortOldUI(sortQuery, timesToRetry) {
     const sortByButtonQuery = "button[data-test-id='toolbar-sort-menu-button']";
     if (timesToRetry === 0) {
         clog("setSortUnreadOldUI: max retries reached");
@@ -196,7 +252,7 @@ async function setSortUnreadOldUI(timesToRetry) {
         sortByButton = await waitForElement(sortByButtonQuery, 400);
         if (!sortByButton) {
             clog("sortByButton: timed out");
-            setSortUnreadOldUI(--timesToRetry);
+            setSortOldUI(sortQuery, --timesToRetry);
             return;
         }
         clog("got sortByButton");
@@ -205,23 +261,22 @@ async function setSortUnreadOldUI(timesToRetry) {
     }
 
     async function clickUnread() {
-        const unreadButtonQuery = "button[data-test-id='sort-by-unread']";
-        let unreadButton = document.querySelector(unreadButtonQuery);
+        let unreadButton = document.querySelector(sortQuery);
 
-        if (unreadButton) {
-            unreadButton.click();
-        } else {
-            clog("waiting for unreadButton");
-            unreadButton = await waitForElement(unreadButtonQuery, 10); // low time so that when we're on a page wo unreadButton it only flickers "once" with all tries
-            if (!unreadButton) {
-                clog("unreadButton: timed out");
-                setSortUnreadOldUI(--timesToRetry);
-                return;
-            }
-            clog("got unreadButton");
-            unreadButton.click();
+    if (unreadButton) {
+        unreadButton.click();
+    } else {
+            clog("waiting for" + sortQuery);
+            unreadButton = await waitForElement(sortQuery, 10); // low time so that when we're on a page wo unreadButton it only flickers "once" with all tries
+        if (!unreadButton) {
+                clog(sortQuery + ": timed out");
+                setSortOldUI(sortQuery, --timesToRetry);
+            return;
         }
-        clog("set by unread successfully");
+            clog("got " + sortQuery);
+        unreadButton.click();
+    }
+        clog("set by " + sortQuery + " successfully");
     }
 }
 
