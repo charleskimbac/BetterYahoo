@@ -1,6 +1,17 @@
 # BetterYahoo
 Go back to the old Yahoo UI or customize your Basic UI experience.
 
+Looking for a similar Yahoo experience as before? Go back to the old UI or enhance the Basic UI experience with BetterYahoo! Press on the extension icon for the settings page.
+
+Features:
+- Go back to the old UI [MAY BREAK AT ANY TIME]
+- Sort by unread by default
+- Hide ads
+- Dark theme*
+- Remove having to scroll the entire page*
+- Many QoL changes*
+*For Basic UI only
+
 <img src=images/dark.png width=400px></img>
 <img src=images/settings.png width=400px></img>
 
