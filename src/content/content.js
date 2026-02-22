@@ -64,10 +64,15 @@ async function main() {
             clog("new setting added", setting);
         }
     });
-    // ig i will disable this since old ui is back and i still want users haha
+    
+    // disturb 
     // if (showUpdateAlert) {
     //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
     // }
+
+    if (settings.backToOldUI) {
+        backToOldUI();
+    }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
     if (currentUI === UI.BASIC) {
@@ -147,19 +152,16 @@ async function main() {
             doAllSortsOldUI();
         }
     }
-
-    if (settings.backToOldUI || (settings.backToOldUI && location.href.startsWith("https://mail.yahoo.com/d/settings/"))) {
-        backToOldUI();
-    }
 }
 
 function doAllSortsOldUI() {
-    const allInboxFolderNumbers = getAllInboxFolderNumbers();
     if (!location.href.startsWith("https://mail.yahoo.com/d/folders/")) {
         return;
     }
 
+    const allInboxFolderNumbers = getAllInboxFolderNumbers();
     const currentFolderNumber = parseInboxFolderNumber(location.href);
+    
     if (settings.sortByUnreadAlwaysOldUI && allInboxFolderNumbers.includes(currentFolderNumber)) {
         setSortOldUI("button[data-test-id='sort-by-unread']", 3);
     } else if (settings.sortByNewAlwaysNonInbox && !allInboxFolderNumbers.includes(currentFolderNumber)) {
