@@ -5,24 +5,39 @@
 */
 
 (() => {
+    let lastHref = window.location.href;
+
+    function dispatchIfHrefChanged() {
+        const currentHref = window.location.href;
+        if (currentHref !== lastHref) {
+            lastHref = currentHref;
+            window.dispatchEvent(new Event("locationchange"));
+        }
+    }
+
     const oldPushState = history.pushState;
     history.pushState = function(...args) {
         const old = oldPushState.apply(this, args);
-        window.dispatchEvent(new Event("locationchange"));
+        dispatchIfHrefChanged();
         return old;
     };
 
     const oldReplaceState = history.replaceState;
     history.replaceState = function(...args) {
         const old = oldReplaceState.apply(this, args);
-        window.dispatchEvent(new Event("locationchange"));
+        dispatchIfHrefChanged();
         return old;
     };
 
     if (!window._locationChangeListenerAttached) {
         window.addEventListener("popstate", () => {
-            window.dispatchEvent(new Event("locationchange"));
+            dispatchIfHrefChanged();
         });
+
+        window.addEventListener("hashchange", () => {
+            dispatchIfHrefChanged();
+        });
+
         window._locationChangeListenerAttached = true;
     }
 })();
