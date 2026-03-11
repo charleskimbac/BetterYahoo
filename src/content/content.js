@@ -64,7 +64,7 @@ async function main() {
             clog("new setting added", setting);
         }
     });
-    
+
     // disturb 
     // if (showUpdateAlert) {
     //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
@@ -154,12 +154,12 @@ async function main() {
     }
 }
 
-function doAllSortsOldUI() {
+async function doAllSortsOldUI() {
     if (!location.href.startsWith("https://mail.yahoo.com/d/folders/")) {
         return;
     }
 
-    const allInboxFolderNumbers = getAllInboxFolderNumbers();
+    const allInboxFolderNumbers = await getAllInboxFolderNumbers();
     const currentFolderNumber = parseInboxFolderNumber(location.href);
     
     if (settings.sortByUnreadAlwaysOldUI && allInboxFolderNumbers.includes(currentFolderNumber)) {
@@ -182,10 +182,10 @@ function searchFromAllMailboxes() {
 }
 */
 
-function getAllInboxFolderNumbers() {
+async function getAllInboxFolderNumbers() {
     const inboxFolderNumbers = [];
 
-    const accountListElement = document.querySelector("div[data-test-id=account-list]");
+    const accountListElement = await waitForElement("div[data-test-id=account-list]", 1000);
     if (accountListElement) { // user has multiple inboxes
         const accountsUL = accountListElement.children[0];
         for (const accountLI of accountsUL.children) {
