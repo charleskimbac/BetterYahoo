@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a bug to help us debug and fix it
+title: "[Bug]: "
+labels:
+  - investigating
+body:
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: Bug description
+      description: What happens right now and what should happen instead? Include screenshots.
+      placeholder: A clear and concise description of the problem
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug_steps
+    attributes:
+      label: Steps to reproduce
+      description: How did the bug happen and what steps did you take?
+      placeholder: |
+        1.
+        2.
+        3.
+        ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser are you using?
+      options:
+        - Chrome
+        - Edge
+        - Other (share below)
+    validations:
+      required: true
+
+  - type: input
+    id: extension_version
+    attributes:
+      label: Extension version
+      description: |
+        What version of the extension are you using?  
+        Enter chrome://extensions in your browser, click on "Details" under BetterYahoo and you should see the version number.
+      placeholder: for example, 2.2.3
+    validations:
+      required: true
+
+  - type: textarea
+    id: extension_settings
+    attributes:
+      label: Extension settings
+      description: |
+        What settings do you have enabled in the extension popup page? Sharing a picture may be easiest.
+      placeholder: Share what BetterYahoo settings you have enabled
+    validations:
+      required: true
+
+  - type: textarea
+    id: other_extensions
+    attributes:
+      label: Other browser extensions
+      description: |
+        What other browser extensions do you have enabled? They may be interfering with BetterYahoo.
+      placeholder: Share a list of enabled extensions
+    validations:
+      required: true
