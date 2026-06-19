@@ -104,7 +104,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
       </div>
 
     <div class="fixed w-[100%] bottom-0 left-0 bg-gray-100">
-      <p><a color="blue" href="https://github.com/charleskimbac/BetterYahoo" target="_blank">BetterYahoo</a> by charleskimbac. <a href="https://ko-fi.com/charleskimbac" target="_blank">Support me!</a></p>
+      <p><a color="blue" href="https://github.com/charleskimbac/BetterYahoo#something-not-working-or-have-a-feature-request" target="_blank">BetterYahoo</a> by charleskimbac. <a href="https://ko-fi.com/charleskimbac" target="_blank">Support me!</a></p>
     </div>
 
     <Modal ref={backToOldUIConfirmModal} closeTypes="onBRButton" modalTitle="Go back to the old UI" modalText={"Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on."} />
