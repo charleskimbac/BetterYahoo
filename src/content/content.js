@@ -782,11 +782,11 @@ function makeMailboxSectionScrollable() {
 
 function checkCurrentUI() {
     const url = location.href;
-    if (url.startsWith("https://mail.yahoo.com/n/")) {
+    if (url.startsWith("https://mail.yahoo.com/n/") || url.startsWith("https://mail.yahoo.com/c/n/")) { // gh issue #3, not sure why /c/ appended
         currentUI = UI.NEW;
     } else if (url.startsWith("https://mail.yahoo.com/d/")) {
         currentUI = UI.OLD;
-    } else if (url.startsWith("https://mail.yahoo.com/b/")) {
+    } else if (url.startsWith("https://mail.yahoo.com/b/") || url.startsWith("https://mail.yahoo.com/c/b/")) { // gh issue #3
         currentUI = UI.BASIC;
     } else {
         alert("uCI");
