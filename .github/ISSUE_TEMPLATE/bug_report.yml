@@ -1,6 +1,6 @@
 name: Bug report
 description: Report a bug to help us debug and fix it
-title: "[Bug]: "
+title: "[Bug]: ..."
 labels:
   - investigating
 body:
@@ -64,7 +64,7 @@ body:
     attributes:
       label: Other browser extensions
       description: |
-        What other browser extensions do you have enabled? They may be interfering with BetterYahoo.
+        What other browser extensions do you have enabled while on yahoo.com? They may be interfering with BetterYahoo.
       placeholder: Share a list of enabled extensions
     validations:
       required: true
