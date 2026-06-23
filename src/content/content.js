@@ -910,13 +910,14 @@ function addEmailDayLabels() {
 
 async function backToOldUI() { // reran on each location change
     // from new UI > basic UI > /d/ settings link > back to inbox
-    if (currentUI === UI.NEW) { // from new UI to basic UI
+
+    if (location.href.startsWith("https://mail.yahoo.com/d/settings/") || location.href.startsWith("https://mail.yahoo.com/c/d/settings/")) { // from /d/ settings to press back; idk what */c/* is
+        const backButton = await waitForElement(".P_2jztU.D_F.F_n");
+        backButton.click();
+    } else if (currentUI === UI.NEW) { // from new UI to basic UI
         goToBasicUIFromNewUI();
     } else if (currentUI === UI.BASIC) { // from basic to /d/
         window.location.replace("https://mail.yahoo.com/d/settings/1");
-    } else if (location.href.startsWith("https://mail.yahoo.com/d/settings/")) { // from /d/ settings to press back
-        const backButton = await waitForElement(".P_2jztU.D_F.F_n");
-        backButton.click();
     }
 }
 
