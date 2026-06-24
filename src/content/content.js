@@ -782,11 +782,12 @@ function makeMailboxSectionScrollable() {
 
 function checkCurrentUI() {
     const url = location.href;
-    if (url.startsWith("https://mail.yahoo.com/n/") || url.startsWith("https://mail.yahoo.com/c/n/")) { // gh issue #3, not sure why /c/ appended
+    // what is /c/? idk gh issue #3
+    if (url.startsWith("https://mail.yahoo.com/n/") || url.startsWith("https://mail.yahoo.com/c/n/")) {
         currentUI = UI.NEW;
-    } else if (url.startsWith("https://mail.yahoo.com/d/")) {
+    } else if (url.startsWith("https://mail.yahoo.com/d/") || url.startsWith("https://mail.yahoo.com/c/d/")) {
         currentUI = UI.OLD;
-    } else if (url.startsWith("https://mail.yahoo.com/b/") || url.startsWith("https://mail.yahoo.com/c/b/")) { // gh issue #3
+    } else if (url.startsWith("https://mail.yahoo.com/b/") || url.startsWith("https://mail.yahoo.com/c/b/")) {
         currentUI = UI.BASIC;
     } else {
         alert("uCI");
@@ -911,7 +912,7 @@ function addEmailDayLabels() {
 async function backToOldUI() { // reran on each location change
     // from new UI > basic UI > /d/ settings link > back to inbox
 
-    if (location.href.startsWith("https://mail.yahoo.com/d/settings/") || location.href.startsWith("https://mail.yahoo.com/c/d/settings/")) { // from /d/ settings to press back; idk what */c/* is
+    if (location.href.startsWith("https://mail.yahoo.com/d/settings/") || location.href.startsWith("https://mail.yahoo.com/c/d/settings/")) { // /c/? idk gh issue #3
         const backButton = await waitForElement(".P_2jztU.D_F.F_n");
         backButton.click();
     } else if (currentUI === UI.NEW) { // from new UI to basic UI
