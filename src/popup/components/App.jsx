@@ -3,6 +3,7 @@ import './App.css';
 import Modal from './Modal.jsx';
 import SettingRow from './SettingRow.jsx';
 import clog from '../../globals/clog.js';
+import Diagnostics from './Diagnostics.jsx';
 
 function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal }) {
   const [basicUISectionClass, setBasicUISectionClass] = useState("");
@@ -102,6 +103,8 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
         <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save settings</button>
         <p id="save-message" className="text-green-700 hidden mt-10 text-sm">Saved! Reload the page.</p>
       </div>
+
+    <Diagnostics />
 
     <div class="fixed w-[100%] bottom-0 left-0 bg-gray-100">
       <p><a color="blue" href="https://github.com/charleskimbac/BetterYahoo#something-not-working-or-have-a-feature-request" target="_blank">BetterYahoo</a> by charleskimbac. <a href="https://ko-fi.com/charleskimbac" target="_blank">Support me!</a></p>

@@ -1,14 +1,19 @@
 {
     "manifest_version": 3,
+    "minimum_chrome_version": "121",
     "name": "BetterYahoo",
-    "version": "2.3.3",
+    "version": "2.4.0",
     "description": "Go back to the old Yahoo UI or customize your Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
+    "background": {
+        "service_worker": "src/background/diagnostics.js",
+        "scripts": ["src/background/diagnostics.js"]
+    },
     "content_scripts": [
         {
             "matches": ["*://mail.yahoo.com/*"],
-            "js": ["src/globals/content-clog.js", "src/globals/content-WaitForElement.js"],
+            "js": ["src/globals/diagnostics.js", "src/globals/content-clog.js", "src/globals/content-WaitForElement.js"],
             "run_at": "document_start"
         },
         {
@@ -44,6 +49,7 @@
     },
 	"browser_specific_settings": {
 		"gecko": {
+			"strict_min_version": "121.0",
 			"id": "BetterYahoo@projects.char.kim",
             "data_collection_permissions": {
                 "required": ["none"]

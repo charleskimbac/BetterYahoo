@@ -31,9 +31,10 @@ let settings; // current user settings
 let currentUI;
 let maxHeightVH = 77; // this is changed if we remove bottom control bar
 
-main();
+main().catch(error => globalThis.BYDiagnostics.error(error, 'content-main'));
 async function main() {
     checkCurrentUI();
+    await globalThis.BYDiagnostics.log('ui-detected', { ui: currentUI?.description || 'unknown' });
 
     settings = await chrome.storage.sync.get();
         
@@ -70,8 +71,8 @@ async function main() {
     //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
     // }
 
-    if (settings.backToOldUI) {
-        backToOldUI();
+    if (settings.backToOldUI && await backToOldUI()) {
+        return;
     }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
@@ -84,9 +85,6 @@ async function main() {
         }
 
         if (isOnEmailContentPage()) {
-            if (settings.backToOldUI)
-                backToOldUI();
-
             if (settings.hideAds)
                 applyHideAdStyles();
 
@@ -148,8 +146,9 @@ async function main() {
         }
     } else if (currentUI === UI.OLD) {
         if (settings.sortByUnreadAlwaysOldUI || settings.sortByNewAlwaysNonInbox) {
-            window.addEventListener("locationchange", doAllSortsOldUI);
-            doAllSortsOldUI();
+            const sort = () => doAllSortsOldUI().catch(error => globalThis.BYDiagnostics.error(error, 'sort-old-ui'));
+            window.addEventListener("locationchange", sort);
+            sort();
         }
     }
 }
@@ -790,7 +789,7 @@ function checkCurrentUI() {
     } else if (url.startsWith("https://mail.yahoo.com/b/") || url.startsWith("https://mail.yahoo.com/c/b/")) {
         currentUI = UI.BASIC;
     } else {
-        alert("uCI");
+        void globalThis.BYDiagnostics.log('unknown-ui');
     }
 }
 
@@ -909,23 +908,38 @@ function addEmailDayLabels() {
     }
 }
 
-async function backToOldUI() { // reran on each location change
-    // from new UI > basic UI > /d/ settings link > back to inbox
-
-    if (location.href.startsWith("https://mail.yahoo.com/d/settings/") || location.href.startsWith("https://mail.yahoo.com/c/d/settings/")) { // /c/? idk gh issue #3
-        const backButton = await waitForElement(".P_2jztU.D_F.F_n");
-        backButton.click();
-    } else if (currentUI === UI.NEW) { // from new UI to basic UI
-        goToBasicUIFromNewUI();
-    } else if (currentUI === UI.BASIC) { // from basic to /d/
-        window.location.replace("https://mail.yahoo.com/d/settings/1");
-    }
+function isOldUISettings() {
+    return /^https:\/\/mail\.yahoo\.com\/(c\/)?d\/settings\//.test(location.href);
 }
 
-function goToBasicUIFromNewUI() {
+async function backToOldUI() {
+    // from new UI > basic UI > /d/ settings link > back to inbox
+
+    if (isOldUISettings()) {
+        const backButton = await waitForElement(".P_2jztU.D_F.F_n", 20000);
+        if (!backButton) {
+            await globalThis.BYDiagnostics.log('settings-back-button-missing');
+            return false;
+        }
+        await globalThis.BYDiagnostics.log('redirect', { step: 'settings-back' });
+        backButton.click();
+        return false;
+    } else if (currentUI === UI.NEW) { // from new UI to basic UI
+        await goToBasicUIFromNewUI();
+    } else if (currentUI === UI.BASIC) { // from basic to /d/
+        await globalThis.BYDiagnostics.log('redirect', { step: 'old-settings', target: '/d/settings' });
+        window.location.replace("https://mail.yahoo.com/d/settings/1");
+    } else {
+        return false;
+    }
+    return true;
+}
+
+async function goToBasicUIFromNewUI() {
     const optoutBaseLink = "https://mail.yahoo.com/d/optout?crumb=";
     const crumb = getCrumb();
     const optoutLink = optoutBaseLink + crumb;
+    await globalThis.BYDiagnostics.log('redirect', { step: 'optout', target: '/d/optout' });
     window.location.replace(optoutLink);
 }
 

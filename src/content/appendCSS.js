@@ -1,7 +1,7 @@
 /* global clog */
 
 // todo: eventually should move all css stuff in content.js to here
-main();
+main().catch(error => globalThis.BYDiagnostics.error(error, 'append-css'));
 async function main() {
   const settings = await chrome.storage.sync.get();
 
