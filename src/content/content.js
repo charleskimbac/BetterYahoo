@@ -780,13 +780,12 @@ function makeMailboxSectionScrollable() {
 }
 
 function checkCurrentUI() {
-    const url = location.href;
-    // what is /c/? idk gh issue #3
-    if (url.startsWith("https://mail.yahoo.com/n/") || url.startsWith("https://mail.yahoo.com/c/n/")) {
+    const pathname = location.pathname.replace(/^\/c\//, "/");
+    if (/^\/n(?:\/|$)/.test(pathname)) {
         currentUI = UI.NEW;
-    } else if (url.startsWith("https://mail.yahoo.com/d/") || url.startsWith("https://mail.yahoo.com/c/d/")) {
+    } else if (/^\/d(?:\/|$)/.test(pathname)) {
         currentUI = UI.OLD;
-    } else if (url.startsWith("https://mail.yahoo.com/b/") || url.startsWith("https://mail.yahoo.com/c/b/")) {
+    } else if (/^\/b(?:\/|$)/.test(pathname)) {
         currentUI = UI.BASIC;
     } else {
         void globalThis.BYDiagnostics.log('unknown-ui');
@@ -924,23 +923,20 @@ async function backToOldUI() {
         await globalThis.BYDiagnostics.log('redirect', { step: 'settings-back' });
         backButton.click();
         return false;
-    } else if (currentUI === UI.NEW) { // from new UI to basic UI
-        await goToBasicUIFromNewUI();
-    } else if (currentUI === UI.BASIC) { // from basic to /d/
-        await globalThis.BYDiagnostics.log('redirect', { step: 'old-settings', target: '/d/settings' });
-        window.location.replace("https://mail.yahoo.com/d/settings/1");
-    } else {
+    }
+
+    if (currentUI !== UI.NEW && currentUI !== UI.BASIC) {
         return false;
     }
-    return true;
-}
 
-async function goToBasicUIFromNewUI() {
-    const optoutBaseLink = "https://mail.yahoo.com/d/optout?crumb=";
-    const crumb = getCrumb();
-    const optoutLink = optoutBaseLink + crumb;
-    await globalThis.BYDiagnostics.log('redirect', { step: 'optout', target: '/d/optout' });
-    window.location.replace(optoutLink);
+    const step = currentUI === UI.NEW ? "optout" : "old-settings";
+    const prefix = location.pathname.startsWith("/c/") ? "/c" : "";
+    const targetPath = prefix + (currentUI === UI.NEW ? "/d/optout" : "/d/settings");
+    const target = "https://mail.yahoo.com" + targetPath
+        + (currentUI === UI.NEW ? "?crumb=" + encodeURIComponent(getCrumb()) : "/1");
+    await globalThis.BYDiagnostics.log('redirect', { step, target: targetPath });
+    window.location.replace(target);
+    return true;
 }
 
 /** 
@@ -966,7 +962,7 @@ function getCrumb() {
     }
 
     indexStart = indexStart + stringToLook.length; // ignore "crumb":"
-    const indexEnd = text.indexOf("\"", indexStart + stringToLook.length);
+    const indexEnd = text.indexOf("\"", indexStart);
     const crumb = text.substring(indexStart, indexEnd);
 
     return crumb;
