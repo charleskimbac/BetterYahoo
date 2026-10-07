@@ -48,7 +48,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
 
     const p = document.querySelector("#save-message");
     p.style.display = "block";
-    p.scrollIntoView();
+    // p.scrollIntoView();
   }, []);
 
   return (
@@ -56,6 +56,15 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
       <h1 className="mb-5 text-center text-xl font-bold mt-[-6px]">BetterYahoo</h1>
 
       <hr></hr>
+
+      <div className="my-10 rounded border border-amber-300 bg-amber-50 p-10 text-left text-sm">
+        <p>Please note that at any time, Yahoo may update their website and going back to the old UI may no longer be possible.</p>
+      </div>
+
+      <div id="button-div">
+        <button className="btn btn-sm mt-5" onClick={saveSettings}>Save settings</button>
+        <p id="save-message" className="text-green-700 hidden mt-10 text-sm">Saved! Reload the page.</p>
+      </div>
 
       <div className="section">
         <h3 className="settingHeader">Old UI</h3>
@@ -99,18 +108,13 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
       </details>
       </div>
 
-      <div id="button-div">
-        <button className="btn btn-sm mt-5" id="save-Button" onClick={saveSettings}>Save settings</button>
-        <p id="save-message" className="text-green-700 hidden mt-10 text-sm">Saved! Reload the page.</p>
-      </div>
-
     <Diagnostics />
 
     <div class="fixed w-[100%] bottom-0 left-0 bg-gray-100">
       <p><a color="blue" href="https://github.com/charleskimbac/BetterYahoo#something-not-working-or-have-a-feature-request" target="_blank">BetterYahoo</a> by charleskimbac. <a href="https://ko-fi.com/charleskimbac" target="_blank">Support me!</a></p>
     </div>
 
-    <Modal ref={backToOldUIConfirmModal} closeTypes="onBRButton" modalTitle="Go back to the old UI" modalText={"Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on."} />
+    <Modal ref={backToOldUIConfirmModal} closeTypes="onBRButton" modalTitle="Go back to the old UI" modalText={"Please note that at any time, Yahoo may update their website and going back to the old UI may no longer be possible.\nBasic UI settings will be disabled while this setting is on."} />
 
 
     <Modal ref={initializedModal} closeTypes="onBRButton" modalTitle="BetterYahoo has been initialized!" modalText={"You can go back to your Yahoo Mail tab.\nIf you want to go back to the old UI, enable the setting (after clicking Continue) and save."}/>
