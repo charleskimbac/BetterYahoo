@@ -40,8 +40,9 @@ function Diagnostics() {
 
   return (
     <section className="section mt-15 mb-15">
-      <h3 className="settingHeader">Troubleshooting</h3>
-      <p className="text-sm mb-10">Export or clear diagnostic logs to help troubleshoot issues when reporting <a href="https://github.com/charleskimbac/BetterYahoo#something-not-working-or-have-a-feature-request" target="_blank">here</a>.</p>
+      <h3 className="settingHeader">Issues & Troubleshooting</h3>
+      <p className="text-sm mb-10">Facing an issue? Report it <a href="https://github.com/charleskimbac/BetterYahoo#something-not-working-or-have-a-feature-request" target="_blank">here</a>.</p>
+      <p className="text-sm mb-10">Export or clear diagnostic logs to help troubleshoot issues when reporting.</p>
       <div className="flex gap-10 justify-center">
         <button className="btn btn-sm" disabled={busy} onClick={() => handleLogs(false)}>Export logs</button>
         <button className="btn btn-sm" disabled={busy} onClick={() => handleLogs(true)}>Clear logs</button>
