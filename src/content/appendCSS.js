@@ -12,7 +12,7 @@ async function main() {
 
   // apply dark theme; disable for settings page (text is same color as background)
   if (settings.useDarkTheme && !settings.backToOldUI && !location.href.includes("https://mail.yahoo.com/b/settings/")) {
-    const path = "src/content/css/darkTheme.css";
+    const path = "src/content/css/basicDarkTheme.css";
     applyCSS(path);
   }
 
@@ -33,6 +33,11 @@ function applyCSS(pathToCSS) {
   link.href = css;
   link.rel = "stylesheet";
   link.type = "text/css";
+  link.addEventListener("load", () => {
+    void globalThis.BYDiagnostics.log('stylesheet-loaded', { stylesheet: pathToCSS });
+  });
+  link.addEventListener("error", () => {
+    void globalThis.BYDiagnostics.log('stylesheet-failed', { stylesheet: pathToCSS });
+  });
   document.documentElement.append(link);
-  clog(`appended ${pathToCSS}`);
 }

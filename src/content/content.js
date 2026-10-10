@@ -237,7 +237,7 @@ async function setSortOldUI(sortQuery, timesToRetry) {
         clog("not sorting by unread (in search page)");
         return;
     }
-    clog("setSortUnreadOldUI, times to retry", timesToRetry);
+    void globalThis.BYDiagnostics.log('sort-attempt', { remainingAttempts: timesToRetry });
 
     // click unread button after sortby is clicked (observer to wait for button to open)
     // start observing before clicking sortby

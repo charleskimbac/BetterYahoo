@@ -22,15 +22,21 @@
     }
 
     async function log(event, details = {}) {
+        let timeout;
         try {
-            const response = await chrome.runtime.sendMessage({ type: 'BY_LOG', entry: {
-                time: new Date().toISOString(), version, pageId, route: route(), event, ...details
-            } });
+            const response = await Promise.race([
+                chrome.runtime.sendMessage({ type: 'BY_LOG', entry: {
+                    time: new Date().toISOString(), version, pageId, route: route(), event, ...details
+                } }),
+                new Promise(resolve => { timeout = setTimeout(() => resolve(null), 1000); })
+            ]);
             if (!response?.ok) throw new Error('Log not saved');
             return true;
         } catch {
             console.warn('[BY] Diagnostic logging unavailable.');
             return false;
+        } finally {
+            clearTimeout(timeout);
         }
     }
 
