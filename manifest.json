@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "minimum_chrome_version": "121",
     "name": "BetterYahoo",
-    "version": "2.4.0",
+    "version": "2.5.0",
     "description": "Go back to the old Yahoo UI or customize your Basic UI experience.",
     "permissions": ["storage"],
     "host_permissions": ["*://mail.yahoo.com/*"],
