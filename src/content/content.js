@@ -931,7 +931,7 @@ async function backToOldUI() {
 
     const step = currentUI === UI.NEW ? "optout" : "old-settings";
     const prefix = location.pathname.startsWith("/c/") ? "/c" : "";
-    const targetPath = prefix + (currentUI === UI.NEW ? "/d/optout" : "/d/settings");
+    const targetPath = currentUI === UI.NEW ? "/d/optout" : prefix + "/d/settings";
     const target = "https://mail.yahoo.com" + targetPath
         + (currentUI === UI.NEW ? "?crumb=" + encodeURIComponent(getCrumb()) : "/1");
     await globalThis.BYDiagnostics.log('redirect', { step, target: targetPath });

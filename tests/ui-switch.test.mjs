@@ -50,7 +50,7 @@ async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton
 for (const prefix of ['', '/c']) {
     test(`switches ${prefix || 'standard'} routes through Basic and old UI`, async () => {
         const start = await loadPage(`${prefix}/n/folders/1`);
-        assert.deepEqual(start.redirects, [`https://mail.yahoo.com${prefix}/d/optout?crumb=test-crumb`]);
+        assert.deepEqual(start.redirects, ['https://mail.yahoo.com/d/optout?crumb=test-crumb']);
 
         const basic = await loadPage(`${prefix}/b/folders/1`);
         assert.deepEqual(basic.redirects, [`https://mail.yahoo.com${prefix}/d/settings/1`]);

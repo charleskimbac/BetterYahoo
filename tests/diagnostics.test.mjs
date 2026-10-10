@@ -116,7 +116,7 @@ test('content startup and UI redirects continue when diagnostic writes stall', a
     await setImmediate();
     expire();
     await setImmediate();
-    assert.deepEqual(redirects, ['https://mail.yahoo.com/c/d/optout?crumb=test-crumb']);
+    assert.deepEqual(redirects, ['https://mail.yahoo.com/d/optout?crumb=test-crumb']);
 });
 
 test('persists safe retry counts while sorting', async () => {
