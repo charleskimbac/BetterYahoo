@@ -6,7 +6,20 @@ import test from 'node:test';
 
 const content = readFileSync(new URL('../src/content/content.js', import.meta.url), 'utf8');
 
-async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton = true } = {}) {
+function createState(enabled = true) {
+    return {
+        settings: {
+            backToOldUI: enabled,
+            sortByUnreadAlwaysOldUI: false,
+            removeComingSoonBar: false,
+            oldHideAds: false,
+            sortByNewAlwaysNonInbox: false,
+        },
+        session: new Map(),
+    };
+}
+
+async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton = true, state = createState(enabled) } = {}) {
     const redirects = [];
     const logs = [];
     const errors = [];
@@ -18,14 +31,14 @@ async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton
     };
     const context = vm.createContext({
         location,
+        sessionStorage: {
+            getItem: key => state.session.get(key) ?? null,
+            setItem: (key, value) => state.session.set(key, value),
+            removeItem: key => state.session.delete(key),
+        },
         chrome: { storage: { sync: {
-            get: async () => ({
-                backToOldUI: enabled,
-                sortByUnreadAlwaysOldUI: false,
-                removeComingSoonBar: false,
-                oldHideAds: false,
-                sortByNewAlwaysNonInbox: false,
-            }),
+            get: async () => structuredClone(state.settings),
+            set: async values => Object.assign(state.settings, structuredClone(values)),
         } } },
         document: {
             querySelector: () => null,
@@ -49,25 +62,111 @@ async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton
 
 for (const prefix of ['', '/c']) {
     test(`switches ${prefix || 'standard'} routes through Basic and old UI`, async () => {
-        const start = await loadPage(`${prefix}/n/folders/1`);
+        const state = createState();
+        const start = await loadPage(`${prefix}/n/folders/1`, { state });
         assert.deepEqual(start.redirects, ['https://mail.yahoo.com/d/optout?crumb=test-crumb']);
 
-        const basic = await loadPage(`${prefix}/b/folders/1`);
+        const basic = await loadPage(`${prefix}/b/folders/1`, { state });
         assert.deepEqual(basic.redirects, [`https://mail.yahoo.com${prefix}/d/settings/1`]);
 
-        const settings = await loadPage(`${prefix}/d/settings/1`);
+        const settings = await loadPage(`${prefix}/d/settings/1`, { state });
         assert.equal(settings.backClicks, 1);
         assert.deepEqual(settings.redirects, []);
 
-        const inbox = await loadPage(`${prefix}/d/folders/1`);
+        const inbox = await loadPage(`${prefix}/d/folders/1`, { state });
         assert.deepEqual(inbox.redirects, []);
         assert.equal(inbox.backClicks, 0);
+        assert.equal(state.settings.backToOldUI, true);
+        assert.equal(state.session.size, 0);
     });
 
-    test(`direct ${prefix}/b visits always attempt the switch`, async () => {
+    test(`disables the option after three failed ${prefix}/b switches`, async () => {
+        const state = createState();
         for (let visit = 0; visit < 3; visit++) {
-            const page = await loadPage(`${prefix}/b`);
+            const page = await loadPage(`${prefix}/b`, { state });
             assert.deepEqual(page.redirects, [`https://mail.yahoo.com${prefix}/d/settings/1`]);
+            assert.equal(state.settings.backToOldUI, true);
+        }
+        for (let visit = 0; visit < 2; visit++) {
+            const page = await loadPage(`${prefix}/b`, { state });
+            assert.deepEqual(page.redirects, []);
+            assert.equal(state.settings.backToOldUI, false);
+        }
+    });
+}
+
+test('stops an optout loop after three failures', async () => {
+    const state = createState();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const page = await loadPage('/n/folders/1', { state });
+        assert.equal(page.redirects.length, 1);
+    }
+    const page = await loadPage('/n/folders/1', { state });
+    assert.deepEqual(page.redirects, []);
+    assert.equal(state.settings.backToOldUI, false);
+});
+
+test('counts complete failed flows rather than intermediate redirects', async () => {
+    const state = createState();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        assert.equal((await loadPage('/c/n/folders/1', { state })).redirects.length, 1);
+        assert.equal((await loadPage('/c/b/folders/1', { state })).redirects.length, 1);
+        assert.equal((await loadPage('/c/d/settings/1', { state })).backClicks, 1);
+        assert.equal(state.settings.backToOldUI, true);
+    }
+    const page = await loadPage('/c/n/folders/1', { state });
+    assert.deepEqual(page.redirects, []);
+    assert.equal(state.settings.backToOldUI, false);
+});
+
+test('successful switches reset earlier failures', async () => {
+    const state = createState();
+    for (let visit = 0; visit < 3; visit++) await loadPage('/b', { state });
+    await loadPage('/d/settings/1', { state });
+    await loadPage('/d/folders/1', { state });
+    assert.equal(state.session.size, 0);
+    assert.equal((await loadPage('/b', { state })).redirects.length, 1);
+    assert.equal(state.settings.backToOldUI, true);
+});
+
+test('can be manually enabled again after automatic disabling', async () => {
+    const state = createState();
+    for (let visit = 0; visit < 4; visit++) await loadPage('/b', { state });
+    assert.equal(state.settings.backToOldUI, false);
+    state.settings.backToOldUI = true;
+    assert.equal((await loadPage('/b', { state })).redirects.length, 1);
+});
+
+test('stops clicking back after three failed settings returns', async () => {
+    const state = createState();
+    for (let attempt = 0; attempt < 3; attempt++) {
+        assert.equal((await loadPage('/d/settings/1', { state })).backClicks, 1);
+    }
+    assert.equal((await loadPage('/d/settings/1', { state })).backClicks, 0);
+    assert.equal(state.settings.backToOldUI, false);
+});
+
+test('turning the option off clears earlier failures', async () => {
+    const state = createState();
+    for (let visit = 0; visit < 3; visit++) await loadPage('/b', { state });
+    state.settings.backToOldUI = false;
+    await loadPage('/b', { state });
+    assert.equal(state.session.size, 0);
+    state.settings.backToOldUI = true;
+    assert.equal((await loadPage('/b', { state })).redirects.length, 1);
+});
+
+for (const [path, options] of [
+    ['/n/folders/1', { crumb: null }],
+    ['/d/settings/1', { backButton: false }],
+]) {
+    test(`disables after three immediate failures on ${path}`, async () => {
+        const state = createState();
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const page = await loadPage(path, { ...options, state });
+            assert.deepEqual(page.redirects, []);
+            assert.equal(page.backClicks, 0);
+            assert.equal(state.settings.backToOldUI, attempt < 2);
         }
     });
 }

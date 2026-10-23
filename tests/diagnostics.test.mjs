@@ -14,6 +14,11 @@ function loadDiagnostics(sendMessage) {
         crypto: { randomUUID: () => 'test-page' },
         URL,
         location: { href: 'https://mail.yahoo.com/c/n/messages/private-id?crumb=secret#private', pathname: '/c/n/messages/private-id' },
+        sessionStorage: {
+            getItem: () => null,
+            setItem() {},
+            removeItem() {},
+        },
         console: { warn() {}, log() {} },
         setTimeout(callback, delay) {
             assert.equal(delay, 1000);

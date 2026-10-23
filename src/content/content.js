@@ -71,8 +71,12 @@ async function main() {
     //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
     // }
 
-    if (settings.backToOldUI && await backToOldUI()) {
-        return;
+    if (settings.backToOldUI) {
+        if (await backToOldUI()) {
+            return;
+        }
+    } else {
+        sessionStorage.removeItem("betterYahoo.oldUISwitch");
     }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
@@ -914,29 +918,69 @@ function isOldUISettings() {
 async function backToOldUI() {
     // from new UI > basic UI > /d/ settings link > back to inbox
 
-    if (isOldUISettings()) {
-        const backButton = await waitForElement(".P_2jztU.D_F.F_n", 20000);
-        if (!backButton) {
-            await globalThis.BYDiagnostics.log('settings-back-button-missing');
-            return false;
-        }
-        await globalThis.BYDiagnostics.log('redirect', { step: 'settings-back' });
-        backButton.click();
+    const stateKey = "betterYahoo.oldUISwitch";
+    const onOldSettings = isOldUISettings();
+    if (currentUI === UI.OLD && !onOldSettings) {
+        sessionStorage.removeItem(stateKey);
+        return false;
+    }
+    if (!onOldSettings && currentUI !== UI.NEW && currentUI !== UI.BASIC) {
         return false;
     }
 
-    if (currentUI !== UI.NEW && currentUI !== UI.BASIC) {
+    // Keep failures across reloads in this tab without counting normal progress.
+    const state = JSON.parse(sessionStorage.getItem(stateKey)) || { failures: 0, step: null };
+    const progressed = (state.step === "optout" && (currentUI === UI.BASIC || onOldSettings))
+        || (state.step === "old-settings" && onOldSettings);
+    if (state.step && !progressed && await oldUISwitchFailed(state)) {
+        return false;
+    }
+
+    if (onOldSettings) {
+        const backButton = await waitForElement(".P_2jztU.D_F.F_n", 20000);
+        if (!backButton) {
+            await globalThis.BYDiagnostics.log('settings-back-button-missing');
+            await oldUISwitchFailed(state);
+            return false;
+        }
+        await globalThis.BYDiagnostics.log('redirect', { step: 'settings-back' });
+        state.step = "settings-back";
+        sessionStorage.setItem(stateKey, JSON.stringify(state));
+        backButton.click();
         return false;
     }
 
     const step = currentUI === UI.NEW ? "optout" : "old-settings";
     const prefix = location.pathname.startsWith("/c/") ? "/c" : "";
     const targetPath = currentUI === UI.NEW ? "/d/optout" : prefix + "/d/settings";
-    const target = "https://mail.yahoo.com" + targetPath
-        + (currentUI === UI.NEW ? "?crumb=" + encodeURIComponent(getCrumb()) : "/1");
+    let target;
+    try {
+        target = "https://mail.yahoo.com" + targetPath
+            + (currentUI === UI.NEW ? "?crumb=" + encodeURIComponent(getCrumb()) : "/1");
+    } catch (error) {
+        await oldUISwitchFailed(state);
+        throw error;
+    }
     await globalThis.BYDiagnostics.log('redirect', { step, target: targetPath });
+    state.step = step;
+    sessionStorage.setItem(stateKey, JSON.stringify(state));
     window.location.replace(target);
     return true;
+}
+
+/** Record a failed switch and disable the option after three failures. */
+async function oldUISwitchFailed(state) {
+    state.failures++;
+    state.step = null;
+    if (state.failures >= 3) {
+        await chrome.storage.sync.set({ backToOldUI: false });
+        settings.backToOldUI = false;
+        sessionStorage.removeItem("betterYahoo.oldUISwitch");
+        await globalThis.BYDiagnostics.log('old-ui-switch-disabled', { failures: state.failures });
+        return true;
+    }
+    sessionStorage.setItem("betterYahoo.oldUISwitch", JSON.stringify(state));
+    return false;
 }
 
 /** 

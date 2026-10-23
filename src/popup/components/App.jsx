@@ -29,6 +29,17 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
   }, [oldSettings]);
 
   useEffect(() => {
+    const onSettingsChanged = (changes, area) => {
+      if (area === "sync" && changes.backToOldUI?.newValue === false) {
+        document.querySelector("#backToOldUI").checked = false;
+        setBasicUISectionClass("");
+      }
+    };
+    chrome.storage.onChanged.addListener(onSettingsChanged);
+    return () => chrome.storage.onChanged.removeListener(onSettingsChanged);
+  }, []);
+
+  useEffect(() => {
     if (showInitializedModal) {
       initializedModal.current.showModal();
     }
