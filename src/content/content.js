@@ -946,6 +946,13 @@ async function backToOldUI() {
         await globalThis.BYDiagnostics.log('redirect', { step: 'settings-back' });
         state.step = "settings-back";
         sessionStorage.setItem(stateKey, JSON.stringify(state));
+        const clearSwitchOnInbox = () => {
+            if (/^\/(c\/)?d\/folders(?:\/|$)/.test(location.pathname)) {
+                sessionStorage.removeItem(stateKey);
+                window.removeEventListener("locationchange", clearSwitchOnInbox);
+            }
+        };
+        window.addEventListener("locationchange", clearSwitchOnInbox);
         backButton.click();
         return false;
     }

@@ -19,18 +19,30 @@ function createState(enabled = true) {
     };
 }
 
-async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton = true, state = createState(enabled) } = {}) {
+async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton = true, backTarget = null, state = createState(enabled) } = {}) {
     const redirects = [];
     const logs = [];
     const errors = [];
+    const listeners = new Set();
     let backClicks = 0;
     const location = {
         href: 'https://mail.yahoo.com' + path,
         pathname: new URL('https://mail.yahoo.com' + path).pathname,
         replace: target => redirects.push(target),
     };
+    const navigate = target => {
+        location.href = 'https://mail.yahoo.com' + target;
+        location.pathname = new URL(location.href).pathname;
+        for (const listener of listeners) listener();
+    };
     const context = vm.createContext({
         location,
+        addEventListener: (event, listener) => {
+            if (event === 'locationchange') listeners.add(listener);
+        },
+        removeEventListener: (event, listener) => {
+            if (event === 'locationchange') listeners.delete(listener);
+        },
         sessionStorage: {
             getItem: key => state.session.get(key) ?? null,
             setItem: (key, value) => state.session.set(key, value),
@@ -45,7 +57,10 @@ async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton
             querySelectorAll: selector => selector === 'script[nonce]'
                 ? (crumb === null ? [] : [{ textContent: JSON.stringify({ crumb, next: 'other-value' }) }]) : [],
         },
-        waitForElement: async () => backButton ? { click: () => backClicks++ } : null,
+        waitForElement: async () => backButton ? { click: () => {
+            backClicks++;
+            if (backTarget) navigate(backTarget);
+        } } : null,
         clog: () => {},
         BYDiagnostics: {
             log: async (event, details) => logs.push({ event, ...details }),
@@ -57,7 +72,7 @@ async function loadPage(path, { enabled = true, crumb = 'test-crumb', backButton
     await setImmediate();
     assert.deepEqual(errors.map(error => error.message), crumb === null ? ['couldnt find crumb'] : [],
         'content script should only report expected errors');
-    return { redirects, logs, backClicks };
+    return { redirects, logs, backClicks, navigate };
 }
 
 for (const prefix of ['', '/c']) {
@@ -92,6 +107,31 @@ for (const prefix of ['', '/c']) {
             assert.deepEqual(page.redirects, []);
             assert.equal(state.settings.backToOldUI, false);
         }
+    });
+
+    test(`clears failures on a successful ${prefix || 'standard'} SPA return to inbox`, async () => {
+        const state = createState();
+        for (let visit = 0; visit < 3; visit++) await loadPage(`${prefix}/b`, { state });
+        const page = await loadPage(`${prefix}/d/settings/1`, {
+            state, backTarget: `${prefix}/d/folders/1`,
+        });
+        assert.equal(page.backClicks, 1);
+        assert.equal(state.session.size, 0);
+        assert.equal((await loadPage(`${prefix}/b`, { state })).redirects.length, 1);
+        assert.equal(state.settings.backToOldUI, true);
+    });
+
+    test(`preserves pending retries until ${prefix || 'standard'} SPA navigation reaches inbox`, async () => {
+        const state = createState();
+        const page = await loadPage(`${prefix}/d/settings/1`, { state });
+        const pending = state.session.get('betterYahoo.oldUISwitch');
+        assert.ok(pending);
+        for (const path of [`${prefix}/d/settings/2`, `${prefix}/n/folders/1`, `${prefix}/b/folders/1`]) {
+            page.navigate(path);
+            assert.equal(state.session.get('betterYahoo.oldUISwitch'), pending);
+        }
+        page.navigate(`${prefix}/d/folders/1`);
+        assert.equal(state.session.size, 0);
     });
 }
 
