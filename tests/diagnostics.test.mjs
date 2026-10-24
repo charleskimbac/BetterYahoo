@@ -108,7 +108,7 @@ test('content startup and UI redirects continue when diagnostic writes stall', a
     const redirects = [];
     context.location.replace = target => redirects.push(target);
     context.chrome.storage = { sync: { get: async () => ({
-        backToOldUI: true, sortByUnreadAlwaysOldUI: false, removeComingSoonBar: false,
+        backToOldUI: true, backToBasicUI: false, sortByUnreadAlwaysOldUI: false, removeComingSoonBar: false,
         oldHideAds: false, sortByNewAlwaysNonInbox: false,
     }) } };
     context.document = {

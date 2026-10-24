@@ -2,7 +2,7 @@
     const pageId = crypto.randomUUID();
     const version = chrome.runtime.getManifest().version;
     const settingNames = new Set([
-        'backToOldUI', 'sortByUnreadAlwaysOldUI', 'removeComingSoonBar', 'oldHideAds',
+        'backToOldUI', 'backToBasicUI', 'sortByUnreadAlwaysOldUI', 'removeComingSoonBar', 'oldHideAds',
         'sortByNewAlwaysNonInbox', 'sortByUnreadAlways', 'hideAds', 'enlargeCheckboxes',
         'addEmailDayLabels', 'useDarkTheme', 'autoConfirmSelections', 'deleteBottomControlBar',
         'makeEmailContentScrollable', 'makeMailboxSectionScrollable', 'applyBetterEmailHeaderSpacing',

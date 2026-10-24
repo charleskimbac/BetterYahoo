@@ -5,9 +5,10 @@ import SettingRow from './SettingRow.jsx';
 import clog from '../../globals/clog.js';
 import Diagnostics from './Diagnostics.jsx';
 
-function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal, backToOldUIFailed = false }) {
+function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal, backToOldUIFailed = false, backToBasicUIFailed = false }) {
   const [basicUISectionClass, setBasicUISectionClass] = useState("");
   const [oldUIFailed, setOldUIFailed] = useState(backToOldUIFailed);
+  const [basicUIFailed, setBasicUIFailed] = useState(backToBasicUIFailed);
 
   const backToOldUIConfirmModal = useRef(null);
   const initializedModal = useRef(null);
@@ -19,8 +20,17 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
 
     // show warning if old ui enabled
     if (enabled) {
+      document.querySelector("#backToBasicUI").checked = false;
       setOldUIFailed(false);
       backToOldUIConfirmModal.current.showModal();
+    }
+  }, []);
+
+  const setBasicUIEnabled = useCallback((enabled) => {
+    if (enabled) {
+      document.querySelector("#backToOldUI").checked = false;
+      setBasicUISectionClass("");
+      setBasicUIFailed(false);
     }
   }, []);
 
@@ -41,6 +51,12 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
       if (changes.backToOldUIFailed) {
         setOldUIFailed(changes.backToOldUIFailed.newValue === true);
       }
+      if (changes.backToBasicUI?.newValue === false) {
+        document.querySelector("#backToBasicUI").checked = false;
+      }
+      if (changes.backToBasicUIFailed) {
+        setBasicUIFailed(changes.backToBasicUIFailed.newValue === true);
+      }
     };
     chrome.storage.onChanged.addListener(onSettingsChanged);
     return () => chrome.storage.onChanged.removeListener(onSettingsChanged);
@@ -60,6 +76,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
       settings[checkbox.id] = checkbox.checked;
     }
     if (settings.backToOldUI) settings.backToOldUIFailed = false;
+    if (settings.backToBasicUI) settings.backToBasicUIFailed = false;
 
     chrome.storage.sync.set(settings, () => {
       clog("settings saved", settings);
@@ -93,23 +110,26 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
             enabled={setting.enabled} 
             labelText={setting.labelText} 
             modalText={setting.modalText} 
-            setOldUIEnabled={setting.name === "backToOldUI" ? setOldUIEnabled : null}
+            onEnabledChange={setting.name === "backToOldUI" ? setOldUIEnabled : null}
             failed={setting.name === "backToOldUI" && oldUIFailed}
           /> )}
       
       </div>
 
-      <div className={`section ${basicUISectionClass}`}>
+      <div className="section">
         <h3 className="settingHeader">Basic UI</h3>
         {basicSettings.map(setting => 
-          <SettingRow key={setting.name} 
+          <SettingRow key={setting.name}
+            className={setting.name === "backToBasicUI" ? "" : basicUISectionClass}
             settingName={setting.name} 
             enabled={setting.enabled} 
             labelText={setting.labelText} 
             modalText={setting.modalText} 
+            onEnabledChange={setting.name === "backToBasicUI" ? setBasicUIEnabled : null}
+            failed={setting.name === "backToBasicUI" && basicUIFailed}
           /> )}
 
-        <details className="text-left">
+        <details className={`text-left ${basicUISectionClass}`}>
         <summary>
           <i className="cursor-pointer" 
             onMouseOver={(event) => event.target.classList.add("underline")}

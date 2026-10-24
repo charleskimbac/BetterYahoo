@@ -7,7 +7,7 @@ main();
 async function main() {
   // btw we actually "add" new settings in content.js instead of here (to notify users too)
   const OLD_UI_SETTINGS = ["backToOldUI", "sortByUnreadAlwaysOldUI", "removeComingSoonBar", "oldHideAds", "sortByNewAlwaysNonInbox"];
-  const BASIC_UI_SETTINGS = ["sortByUnreadAlways", "hideAds", "enlargeCheckboxes", "addEmailDayLabels", "useDarkTheme", "autoConfirmSelections"];
+  const BASIC_UI_SETTINGS = ["backToBasicUI", "sortByUnreadAlways", "hideAds", "enlargeCheckboxes", "addEmailDayLabels", "useDarkTheme", "autoConfirmSelections"];
   const MINOR_BASIC_UI_SETTINGS = ["deleteBottomControlBar", "makeEmailContentScrollable", "makeMailboxSectionScrollable", "applyBetterEmailHeaderSpacing", "makeEmailsSectionScrollable", "enlargeCheckboxes", "showFullNewMailCircleIndicator"];
 
   const SETTING_TO_LABEL_TEXT = {
@@ -21,6 +21,7 @@ async function main() {
     enlargeCheckboxes: "Enlarge checkboxes",
     addEmailDayLabels: "Add 'email receive day' labels",
     backToOldUI: "Go back to the old UI",
+    backToBasicUI: "Go back to the Basic UI",
     useDarkTheme: "Use dark theme",
     showFullNewMailCircleIndicator: "Show full new mail circle indicator",
     autoConfirmSelections: "Auto confirm selections",
@@ -35,6 +36,7 @@ async function main() {
     enlargeCheckboxes: "Makes selecting individual emails easier.",
     addEmailDayLabels: "Bring back the \"Today\", \"Yesterday\", \"Last Week\", and day labels in your inbox.\nThis feature will not work if the \"Always sort mail by unread\" setting is also enabled.",
     backToOldUI: "Please note that this feature may break at any time, should Yahoo choose to fix this workaround.\nBasic UI settings will be disabled while this setting is on.",
+    backToBasicUI: "Open the Basic UI inbox when using the new or old UI.\nSelecting this option turns off \"Go back to the old UI\".\nAfter 3 failed attempts, this option will turn off and show FAILED.",
     autoConfirmSelections: "Auto apply and submit your selection for the \"Actions\", \"Account Info\", and \"Sort By\" buttons.",
     removeComingSoonBar: "Remove the Yahoo ad at the top of the page promoting a garbage new UI.",
     sortByNewAlwaysNonInbox: "Always sort mail by new when in folders like Drafts, Sent, Spam, and Trash.",
@@ -52,6 +54,7 @@ async function main() {
     enlargeCheckboxes: true,
     addEmailDayLabels: true,
     backToOldUI: false,
+    backToBasicUI: false,
     useDarkTheme: false,
     showFullNewMailCircleIndicator: true,
     autoConfirmSelections: true,
@@ -71,12 +74,16 @@ async function main() {
     showInitializedModal = true;
     clog(userSettings)
   }
+  if (userSettings.backToBasicUI === undefined) {
+    userSettings.backToBasicUI = false;
+    await chrome.storage.sync.set({ backToBasicUI: false });
+  }
 
   const userOldUISettings = [];
   const userBasicUISettings = [];
   const userMinorBasicUISettings = [];
   for (let userSetting in userSettings) {
-    if (userSetting === "backToOldUIFailed") continue;
+    if (userSetting === "backToOldUIFailed" || userSetting === "backToBasicUIFailed") continue;
     const settingObj = {
       name: userSetting,
       labelText: SETTING_TO_LABEL_TEXT[userSetting],
@@ -87,7 +94,8 @@ async function main() {
     if (OLD_UI_SETTINGS.includes(userSetting)) {
       userOldUISettings.push(settingObj);
     } else if (BASIC_UI_SETTINGS.includes(userSetting)) {
-      userBasicUISettings.push(settingObj);
+      if (userSetting === "backToBasicUI") userBasicUISettings.unshift(settingObj);
+      else userBasicUISettings.push(settingObj);
     } else if (MINOR_BASIC_UI_SETTINGS.includes(userSetting)) {
       userMinorBasicUISettings.push(settingObj);
     } else {
@@ -102,7 +110,7 @@ async function main() {
 
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} showInitializedModal={showInitializedModal} backToOldUIFailed={userSettings.backToOldUIFailed === true}/>
+      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} showInitializedModal={showInitializedModal} backToOldUIFailed={userSettings.backToOldUIFailed === true} backToBasicUIFailed={userSettings.backToBasicUIFailed === true}/>
     </StrictMode>
   );
 }

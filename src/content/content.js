@@ -53,7 +53,8 @@ async function main() {
         "sortByUnreadAlwaysOldUI",
         "removeComingSoonBar",
         "oldHideAds",
-        "sortByNewAlwaysNonInbox"
+        "sortByNewAlwaysNonInbox",
+        "backToBasicUI"
     ];
 
     // let showUpdateAlert = false; see comment below
@@ -71,12 +72,18 @@ async function main() {
     //     window.alert("Sorry to intrude.\nThe BetterYahoo extension has updated and now has more settings!\nVisit the settings page to see them.");
     // }
 
+    if (!settings.backToBasicUI) {
+        sessionStorage.removeItem("betterYahoo.basicUISwitch");
+    }
     if (settings.backToOldUI) {
         if (await backToOldUI()) {
             return;
         }
     } else {
         sessionStorage.removeItem("betterYahoo.oldUISwitch");
+        if (settings.backToBasicUI && await backToBasicUI()) {
+            return;
+        }
     }
 
     // isOnAllEmailsPage() must be checked last, addEmailDayLabels() should be after sortByUnreadAlways
@@ -913,6 +920,32 @@ function addEmailDayLabels() {
 
 function isOldUISettings() {
     return /^https:\/\/mail\.yahoo\.com\/(c\/)?d\/settings\//.test(location.href);
+}
+
+/** Open the Basic inbox, stopping after three unsuccessful redirects. */
+async function backToBasicUI() {
+    const stateKey = "betterYahoo.basicUISwitch";
+    if (currentUI === UI.BASIC) {
+        sessionStorage.removeItem(stateKey);
+        return false;
+    }
+    if (currentUI !== UI.NEW && currentUI !== UI.OLD) {
+        return false;
+    }
+
+    const attempts = Number(sessionStorage.getItem(stateKey) || 0);
+    if (attempts >= 3) {
+        await chrome.storage.sync.set({ backToBasicUI: false, backToBasicUIFailed: true });
+        settings.backToBasicUI = false;
+        sessionStorage.removeItem(stateKey);
+        await globalThis.BYDiagnostics.log('basic-ui-switch-disabled', { failures: attempts });
+        return false;
+    }
+
+    await globalThis.BYDiagnostics.log('redirect', { step: 'basic-inbox', target: '/b/folders' });
+    sessionStorage.setItem(stateKey, String(attempts + 1));
+    window.location.replace("https://mail.yahoo.com/b/folders/1?.src=ym&reason=n8&folderType=INBOX");
+    return true;
 }
 
 async function backToOldUI() {

@@ -5,11 +5,13 @@ Looking for a similar Yahoo experience as before? Go back to the old UI or enhan
 
 Features:
 - Go back to the old UI [MAY BREAK AT ANY TIME]
+- Go back to the Basic UI [MAY BREAK AT ANY TIME]
 - Sort by unread by default
 - Hide ads
 - Dark theme*
 - Remove having to scroll the entire page*
 - Many QoL changes*
+
 *For Basic UI only
 
 <img src=images/dark.png width=400px></img>
@@ -20,7 +22,7 @@ Features:
 <a href="https://addons.mozilla.org/en-US/firefox/addon/betteryahoo/"><img alt="Download on the Firefox Addon Store" src="https://extensionworkshop.com/assets/img/documentation/publish/get-the-addon-178x60px.dad84b42.png" height=60px></img></a>
 
 ## Something not working or have a feature request?
-_**As of 10/21/26, going back to the old UI may not be possible anymore.**_
+_As of 10/21/26, going back to the old UI may not be possible anymore._
 
 Please check if it has been already reported [here](https://github.com/charleskimbac/BetterYahoo/issues?q=is%3Aissue). If not or the issue has been closed, [open a new issue](https://github.com/charleskimbac/BetterYahoo/issues/new/choose)!
 

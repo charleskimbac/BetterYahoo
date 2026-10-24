@@ -10,6 +10,7 @@ function createState(enabled = true) {
     return {
         settings: {
             backToOldUI: enabled,
+            backToBasicUI: false,
             sortByUnreadAlwaysOldUI: false,
             removeComingSoonBar: false,
             oldHideAds: false,
@@ -240,4 +241,74 @@ test('preserves short crumbs and encodes reserved query characters', async () =>
         assert.equal(url.searchParams.get('crumb'), crumb);
         assert.deepEqual([...url.searchParams.keys()], ['crumb']);
     }
+});
+
+for (const prefix of ['', '/c']) {
+    test(`switches new and old ${prefix || 'standard'} routes to the Basic inbox`, async () => {
+        for (const path of [`${prefix}/n/folders/1`, `${prefix}/n/messages/123`, `${prefix}/d/folders/1`, `${prefix}/d/settings/1`]) {
+            const state = createState(false);
+            state.settings.backToBasicUI = true;
+            const page = await loadPage(path, { state });
+            assert.deepEqual(page.redirects, ['https://mail.yahoo.com/b/folders/1?.src=ym&reason=n8&folderType=INBOX']);
+            assert.equal(page.backClicks, 0);
+        }
+    });
+
+    test(`does not redirect when already on ${prefix || 'standard'} Basic UI`, async () => {
+        const state = createState(false);
+        state.settings.backToBasicUI = true;
+        const page = await loadPage(`${prefix}/b`, { state });
+        assert.deepEqual(page.redirects, []);
+    });
+}
+
+test('disables the Basic switch and records failure after three unsuccessful redirects', async () => {
+    const state = createState(false);
+    state.settings.backToBasicUI = true;
+    for (const path of ['/n/folders/1', '/c/n/folders/1', '/d/folders/1']) {
+        assert.equal((await loadPage(path, { state })).redirects.length, 1);
+        assert.equal(state.settings.backToBasicUI, true);
+        assert.notEqual(state.settings.backToBasicUIFailed, true);
+    }
+    for (let visit = 0; visit < 2; visit++) {
+        assert.deepEqual((await loadPage('/n/folders/1', { state })).redirects, []);
+        assert.equal(state.settings.backToBasicUI, false);
+        assert.equal(state.settings.backToBasicUIFailed, true);
+    }
+    state.settings.backToBasicUI = true;
+    state.settings.backToBasicUIFailed = false;
+    assert.equal((await loadPage('/n/folders/1', { state })).redirects.length, 1);
+});
+
+test('reaching Basic UI resets earlier failed attempts', async () => {
+    const state = createState(false);
+    state.settings.backToBasicUI = true;
+    for (let visit = 0; visit < 3; visit++) await loadPage('/n/folders/1', { state });
+    await loadPage('/b', { state });
+    assert.equal(state.session.size, 0);
+    assert.equal((await loadPage('/n/folders/1', { state })).redirects.length, 1);
+    assert.equal(state.settings.backToBasicUI, true);
+});
+
+test('turning the Basic switch off clears earlier attempts', async () => {
+    const state = createState(false);
+    state.settings.backToBasicUI = true;
+    await loadPage('/n/folders/1', { state });
+    state.settings.backToBasicUI = false;
+    await loadPage('/n/folders/1', { state });
+    assert.equal(state.session.size, 0);
+});
+
+test('a conflicting stored preference keeps the existing old UI switch in control', async () => {
+    const state = createState();
+    state.settings.backToBasicUI = true;
+    assert.deepEqual((await loadPage('/n/folders/1', { state })).redirects,
+        ['https://mail.yahoo.com/d/optout?crumb=test-crumb']);
+});
+
+test('adds the Basic switch disabled for existing installations', async () => {
+    const state = createState(false);
+    delete state.settings.backToBasicUI;
+    await loadPage('/n/folders/1', { state });
+    assert.equal(state.settings.backToBasicUI, false);
 });
