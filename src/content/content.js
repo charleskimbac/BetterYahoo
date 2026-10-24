@@ -980,7 +980,7 @@ async function oldUISwitchFailed(state) {
     state.failures++;
     state.step = null;
     if (state.failures >= 3) {
-        await chrome.storage.sync.set({ backToOldUI: false });
+        await chrome.storage.sync.set({ backToOldUI: false, backToOldUIFailed: true });
         settings.backToOldUI = false;
         sessionStorage.removeItem("betterYahoo.oldUISwitch");
         await globalThis.BYDiagnostics.log('old-ui-switch-disabled', { failures: state.failures });

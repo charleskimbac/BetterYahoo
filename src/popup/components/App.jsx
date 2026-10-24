@@ -5,8 +5,9 @@ import SettingRow from './SettingRow.jsx';
 import clog from '../../globals/clog.js';
 import Diagnostics from './Diagnostics.jsx';
 
-function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal }) {
+function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedModal, backToOldUIFailed = false }) {
   const [basicUISectionClass, setBasicUISectionClass] = useState("");
+  const [oldUIFailed, setOldUIFailed] = useState(backToOldUIFailed);
 
   const backToOldUIConfirmModal = useRef(null);
   const initializedModal = useRef(null);
@@ -17,8 +18,10 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
     enabled ? setBasicUISectionClass(basicUISectionClassIfEnabled) : setBasicUISectionClass("");
 
     // show warning if old ui enabled
-    if (enabled)
+    if (enabled) {
+      setOldUIFailed(false);
       backToOldUIConfirmModal.current.showModal();
+    }
   }, []);
 
   // hide basic ui settings if old ui enabled
@@ -30,9 +33,13 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
 
   useEffect(() => {
     const onSettingsChanged = (changes, area) => {
-      if (area === "sync" && changes.backToOldUI?.newValue === false) {
+      if (area !== "sync") return;
+      if (changes.backToOldUI?.newValue === false) {
         document.querySelector("#backToOldUI").checked = false;
         setBasicUISectionClass("");
+      }
+      if (changes.backToOldUIFailed) {
+        setOldUIFailed(changes.backToOldUIFailed.newValue === true);
       }
     };
     chrome.storage.onChanged.addListener(onSettingsChanged);
@@ -52,6 +59,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
     for (const checkbox of checkboxes) {
       settings[checkbox.id] = checkbox.checked;
     }
+    if (settings.backToOldUI) settings.backToOldUIFailed = false;
 
     chrome.storage.sync.set(settings, () => {
       clog("settings saved", settings);
@@ -86,6 +94,7 @@ function App({ oldSettings, basicSettings, minorBasicSettings, showInitializedMo
             labelText={setting.labelText} 
             modalText={setting.modalText} 
             setOldUIEnabled={setting.name === "backToOldUI" ? setOldUIEnabled : null}
+            failed={setting.name === "backToOldUI" && oldUIFailed}
           /> )}
       
       </div>

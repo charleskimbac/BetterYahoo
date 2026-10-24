@@ -76,6 +76,7 @@ async function main() {
   const userBasicUISettings = [];
   const userMinorBasicUISettings = [];
   for (let userSetting in userSettings) {
+    if (userSetting === "backToOldUIFailed") continue;
     const settingObj = {
       name: userSetting,
       labelText: SETTING_TO_LABEL_TEXT[userSetting],
@@ -101,7 +102,7 @@ async function main() {
 
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} showInitializedModal={showInitializedModal}/>
+      <App oldSettings={userOldUISettings} basicSettings={userBasicUISettings} minorBasicSettings={userMinorBasicUISettings} showInitializedModal={showInitializedModal} backToOldUIFailed={userSettings.backToOldUIFailed === true}/>
     </StrictMode>
   );
 }

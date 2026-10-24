@@ -101,11 +101,13 @@ for (const prefix of ['', '/c']) {
             const page = await loadPage(`${prefix}/b`, { state });
             assert.deepEqual(page.redirects, [`https://mail.yahoo.com${prefix}/d/settings/1`]);
             assert.equal(state.settings.backToOldUI, true);
+            assert.notEqual(state.settings.backToOldUIFailed, true);
         }
         for (let visit = 0; visit < 2; visit++) {
             const page = await loadPage(`${prefix}/b`, { state });
             assert.deepEqual(page.redirects, []);
             assert.equal(state.settings.backToOldUI, false);
+            assert.equal(state.settings.backToOldUIFailed, true);
         }
     });
 
@@ -207,6 +209,7 @@ for (const [path, options] of [
             assert.deepEqual(page.redirects, []);
             assert.equal(page.backClicks, 0);
             assert.equal(state.settings.backToOldUI, attempt < 2);
+            assert.equal(state.settings.backToOldUIFailed === true, attempt === 2);
         }
     });
 }
